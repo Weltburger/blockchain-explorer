@@ -1,7 +1,7 @@
 package models
 
 type Header struct {
-	Level                     uint64       `json:"level"`
+	Level                     uint64      `json:"level"`
 	Proto                     int64       `json:"proto"`
 	Predecessor               Predecessor `json:"predecessor"`
 	Timestamp                 string      `json:"timestamp"`

@@ -1,16 +1,11 @@
 package main
 
 import (
-	"explorer/models"
-	"fmt"
-	"io/ioutil"
-	"log"
-	"net/http"
-	"time"
+	"explorer/internal/storage"
 )
 
 func main() {
-	for {
+	/*for {
 		resp, err := http.Get("https://mainnet-tezos.giganode.io/chains/main/blocks/head")
 		if err != nil {
 			log.Fatal(err)
@@ -23,5 +18,8 @@ func main() {
 		fmt.Println(block.Operations)
 
 		time.Sleep(time.Second * 15)
-	}
+	}*/
+
+	db := storage.GetDB()
+	db.Migrate()
 }

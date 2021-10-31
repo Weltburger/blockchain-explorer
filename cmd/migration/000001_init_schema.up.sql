@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS blocks.block (
         ),
         NonceHash                   Nullable(String),
         ConsumedGas                 String,
-        Deactivated                 Nullable(Array(String)),
+        Deactivated                 Array(String),
         BalanceUpdates              Nested
         (
             Kind                    String,
@@ -84,7 +84,8 @@ CREATE TABLE IF NOT EXISTS blocks.block (
             ConsumedMilligas        String,
             StorageSize             String
         )
-    )
+    ),
+    Operations        String
 
 ) engine = MergeTree()
       PARTITION BY toYYYYMMDD(Timestamp)
