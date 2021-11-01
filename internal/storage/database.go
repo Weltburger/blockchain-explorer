@@ -2,56 +2,45 @@ package storage
 
 import (
 	"database/sql"
-	"explorer/models"
-	"fmt"
 	_ "github.com/mailru/go-clickhouse"
-	"gorm.io/driver/clickhouse"
-
-	//"gorm.io/driver/clickhouse"
-	"gorm.io/gorm"
 	"log"
-	"sync"
 )
 
 type Database struct {
-	GormDB *gorm.DB
-	sync.Once
+	DB            *sql.DB
+	Tx            *sql.Tx
+	Stmt          *sql.Stmt
+	blockStorage  *BlockStorage
+}
+
+func (database *Database) BlockStorage() *BlockStorage {
+	if database.blockStorage != nil {
+		return database.blockStorage
+	}
+
+	database.blockStorage = &BlockStorage{database: database}
+
+	return database.blockStorage
 }
 
 func GetDB() *Database {
-	gormDB := startDB()
+	DB := startDB()
 
-	return &Database{GormDB: gormDB}
+	return &Database{DB: DB}
 }
 
-func startDB() *gorm.DB {
-	dbUrl := "http://localhost:8123/blocks?debug=true"
-	sqlDB, err := sql.Open("clickhouse", dbUrl)
+func startDB() *sql.DB {
+	db, err := sql.Open("clickhouse", "http://localhost:8123/blocks?debug=true")
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err = sqlDB.Ping(); err != nil {
+	if err = db.Ping(); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("aaa")
 
-	gormDB, err := gorm.Open(clickhouse.New(clickhouse.Config{
-		Conn: sqlDB,
-	}), &gorm.Config{})
-	if err != nil {
-		log.Fatal(err)
-		return nil
-	}
-
-	return gormDB
+	return db
 }
 
-func (s *Database) Migrate() {
-	s.Do(func() {
-		err := s.GormDB.Set("gorm:table_options", "engine = MergeTree()\n PARTITION BY toYYYYMMDD(Timestamp)\n ORDER BY (Hash)").AutoMigrate(&models.Block{})
-		if err != nil {
-			return
-		}
-	})
+func (database *Database) CloseDB()  {
+	database.DB.Close()
 }
-

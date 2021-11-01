@@ -1,6 +1,8 @@
 package models
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 func UnmarshalBlock(data []byte) (Block, error) {
 	var r Block

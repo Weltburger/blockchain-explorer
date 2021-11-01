@@ -91,3 +91,16 @@ CREATE TABLE IF NOT EXISTS blocks.block (
       PARTITION BY toYYYYMMDD(Timestamp)
       ORDER BY (Hash)
 
+
+CREATE TABLE IF NOT EXISTS blocks.block (
+    Protocol        String,
+    ChainID         String,
+    Hash            String,
+    Timestamp       DateTime,
+    Header          String,
+    Metadata        String,
+    Operations      String
+) engine = MergeTree()
+      PARTITION BY toYYYYMMDD(Timestamp)
+      ORDER BY (Hash)
+
