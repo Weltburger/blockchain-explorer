@@ -1,11 +1,10 @@
 package controller
 
 import (
-	"explorer/models"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"net/http"
-	"time"
+	"strconv"
 )
 
 type BlockController struct {
@@ -15,23 +14,33 @@ type BlockController struct {
 func (blockController *BlockController) GetBlock(c echo.Context) error {
 	blk := c.Param("block")
 
-	block := new(models.Block)
-
-	resp, err := blockController.controller.DB.DB.Query(`
-		SELECT * FROM block WHERE Hash = ?
-	`, blk)
+	block, err := blockController.controller.DB.BlockStorage().GetBlock(blk)
 	if err != nil {
 		return err
 	}
 
-	var tm time.Time
-	var header, meatadata, ops string
-	resp.Next()
-	err = resp.Scan(&block.Protocol, &block.ChainID, &block.Hash, &tm, &header, &meatadata, &ops)
+	fmt.Println(block)
+
+	return c.JSON(http.StatusOK, block)
+}
+
+func (blockController *BlockController) GetBlocks(c echo.Context) error {
+	limit, err := strconv.Atoi(c.QueryParam("limit"))
 	if err != nil {
 		return err
 	}
-	fmt.Println("aaaa", block, header, meatadata, ops)
+	offset, err := strconv.Atoi(c.QueryParam("offset"))
+	if err != nil {
+		return err
+	}
 
-	return c.String(http.StatusOK, "bloch has been received")
+
+	blocks, err := blockController.controller.DB.BlockStorage().GetBlocks(offset, limit)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(blocks)
+
+	return c.JSON(http.StatusOK, blocks)
 }

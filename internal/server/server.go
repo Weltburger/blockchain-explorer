@@ -28,7 +28,7 @@ func NewServer() *Server {
 
 	apiGroup := server.Router.Group("/api/v1")
 
-	//apiGroup.GET("/blocks", Controller.UserController().CreateUser)
+	apiGroup.GET("/blocks", server.Controller.BlockController().GetBlocks)
 	apiGroup.GET("/block/:block", server.Controller.BlockController().GetBlock)
 
 	return server
@@ -45,10 +45,12 @@ func (s *Server) CheckBlocks() {
 		resp.Body.Close()
 		block, _ := models.UnmarshalBlock(body)
 
-		/*s.Controller.DB.BlockStorage().Exc(&block)
-		s.Controller.DB.BlockStorage().Cmt()*/
+		/*err = s.Controller.DB.BlockStorage().SaveBlock(&block)
+		if err != nil {
+			log.Fatal(err)
+		}*/
 		fmt.Println(block)
 
-		time.Sleep(time.Second * 15)
+		time.Sleep(time.Second * 30)
 	}
 }

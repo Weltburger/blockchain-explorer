@@ -2,12 +2,10 @@ package controller
 
 import (
 	"explorer/internal/storage"
-	"explorer/models"
 )
 
 type Controller struct {
 	DB              *storage.Database
-	block           *models.Block
 	blockController *BlockController
 }
 
@@ -23,5 +21,7 @@ func (controller *Controller) BlockController() *BlockController {
 
 func New() *Controller {
 	db := storage.GetDB()
+	db.Tx, _ = db.DB.Begin()
+	db.Stmt = db.BlockStorage().Prepare()
 	return &Controller{DB: db}
 }
