@@ -43,10 +43,10 @@ func (blockStorage *BlockStorage) Exc(data *models.Block) error {
 		return err
 	}
 
-	ops, err := json.Marshal(data.Operations)
+	/*ops, err := json.Marshal(data.Operations)
 	if err != nil {
 		return err
-	}
+	}*/
 	hdr, err := json.Marshal(data.Header)
 	if err != nil {
 		return err
@@ -63,7 +63,7 @@ func (blockStorage *BlockStorage) Exc(data *models.Block) error {
 		t,
 		string(hdr),
 		string(mtdt),
-		string(ops),
+		//string(ops),
 	); err != nil {
 		return err
 	}

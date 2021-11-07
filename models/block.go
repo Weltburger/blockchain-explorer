@@ -1,8 +1,6 @@
 package models
 
-import (
-	"encoding/json"
-)
+import "encoding/json"
 
 func UnmarshalBlock(data []byte) (Block, error) {
 	var r Block
@@ -15,10 +13,34 @@ func (r *Block) Marshal() ([]byte, error) {
 }
 
 type Block struct {
-	Protocol   Protocol      `json:"protocol"`
-	ChainID    ChainID       `json:"chain_id"`
+	Protocol   string        `json:"protocol"`
+	ChainID    string        `json:"chain_id"`
 	Hash       string        `json:"hash"`
 	Header     Header        `json:"header"`
 	Metadata   BlockMetadata `json:"metadata"`
-	Operations [][]Operation `json:"operations"`
+	Operations []byte		 `json:"operations"`
+}
+
+type Header struct {
+	Level                     int64       `json:"level"`
+	Proto                     int64       `json:"proto"`
+	Predecessor               string      `json:"predecessor"`
+	Timestamp                 string      `json:"timestamp"`
+	ValidationPass            int64       `json:"validation_pass"`
+	OperationsHash            string      `json:"operations_hash"`
+	Fitness                   []string    `json:"fitness"`
+	Priority                  int64       `json:"priority"`
+	Signature                 string      `json:"signature"`
+}
+
+type BlockMetadata struct {
+	Baker                     string                     `json:"baker"`
+	LevelInfo                 LevelInfo                  `json:"level_info"`
+	ConsumedGas               string                     `json:"consumed_gas"`
+}
+
+type LevelInfo struct {
+	Level              int64 `json:"level"`
+	Cycle              int64 `json:"cycle"`
+	CyclePosition      int64 `json:"cycle_position"`
 }
