@@ -49,6 +49,32 @@ func (s *Server) CheckBlocks() {
 		if err != nil {
 			log.Fatal(err)
 		}*/
+		//fmt.Println(block)
+		for i := 0; i < len(block.Operations[3]); i++ {
+			fmt.Println(block.Operations[3][i])
+		}
+
+		time.Sleep(time.Second * 30)
+	}
+}
+
+func (s *Server) Crawl(startPosHash string) {
+	for {
+		// правильное распараллеливание + ограничение по запросам?
+		url := "https://mainnet-tezos.giganode.io/chains/main/blocks/" + startPosHash + "-"
+		resp, err := http.Get(url)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		body, _ := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		block, _ := models.UnmarshalBlock(body)
+
+		/*err = s.Controller.DB.BlockStorage().SaveBlock(&block)
+		if err != nil {
+			log.Fatal(err)
+		}*/
 		fmt.Println(block)
 
 		time.Sleep(time.Second * 30)
