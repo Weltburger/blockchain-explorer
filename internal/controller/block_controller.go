@@ -27,11 +27,11 @@ func (blockController *BlockController) GetBlock(c echo.Context) error {
 func (blockController *BlockController) GetBlocks(c echo.Context) error {
 	limit, err := strconv.Atoi(c.QueryParam("limit"))
 	if err != nil {
-		return err
+		limit = 1
 	}
 	offset, err := strconv.Atoi(c.QueryParam("offset"))
 	if err != nil {
-		return err
+		offset = 0
 	}
 
 

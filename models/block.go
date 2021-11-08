@@ -22,7 +22,6 @@ type Block struct {
 }
 
 type Header struct {
-	Level                     int64       `json:"level"`
 	Proto                     int64       `json:"proto"`
 	Predecessor               string      `json:"predecessor"`
 	Timestamp                 string      `json:"timestamp"`
@@ -31,6 +30,7 @@ type Header struct {
 	Fitness                   []string    `json:"fitness"`
 	Priority                  int64       `json:"priority"`
 	Signature                 string      `json:"signature"`
+	BakerFee                  uint64      `json:"baker_fee"`
 }
 
 type BlockMetadata struct {

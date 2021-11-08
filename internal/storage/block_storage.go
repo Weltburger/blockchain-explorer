@@ -1,12 +1,11 @@
 package storage
 
 import (
-	"bytes"
 	"database/sql"
-	"encoding/json"
 	"explorer/models"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -17,15 +16,24 @@ type BlockStorage struct {
 func (blockStorage *BlockStorage) Prepare() *sql.Stmt {
 	st, err := blockStorage.database.Tx.Prepare(`
 		INSERT INTO blocks.block (
-			Protocol,
-		    ChainID,
-		    Hash,
-		    Timestamp,
-		    Header,
-		    Metadata,
-		    Operations
+			protocol,
+			chain_id,
+			hash,
+			baker_fees,
+			"level",
+			predecessor,
+			priority,
+			"timestamp",
+			validation_pass,
+			validation_hash,
+			fitness,
+			signature,
+			baker,
+			cycle_num,
+			cycle_position,
+			consumed_gas     
 		) VALUES (
-			?, ?, ?, ?, ?, ?, ?
+			?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 		)`)
 
 	if err != nil {
@@ -43,27 +51,27 @@ func (blockStorage *BlockStorage) Exc(data *models.Block) error {
 		return err
 	}
 
-	/*ops, err := json.Marshal(data.Operations)
-	if err != nil {
-		return err
-	}*/
-	hdr, err := json.Marshal(data.Header)
-	if err != nil {
-		return err
-	}
-	mtdt, err := json.Marshal(data.Metadata)
-	if err != nil {
-		return err
-	}
+	fitness := strings.Join(data.Header.Fitness, ",")
+
+
 
 	if _, err := blockStorage.database.Stmt.Exec(
 		data.Protocol,
 		data.ChainID,
 		data.Hash,
+		0,
+		data.Metadata.LevelInfo.Level,
+		data.Header.Predecessor,
+		data.Header.Priority,
 		t,
-		string(hdr),
-		string(mtdt),
-		//string(ops),
+		data.Header.ValidationPass,
+		data.Header.OperationsHash,
+		fitness,
+		data.Header.Signature,
+		data.Metadata.Baker,
+		data.Metadata.LevelInfo.Cycle,
+		data.Metadata.LevelInfo.CyclePosition,
+		data.Metadata.ConsumedGas,
 	); err != nil {
 		return err
 	}
@@ -84,39 +92,41 @@ func (blockStorage *BlockStorage) Cmt() error {
 
 func (blockStorage *BlockStorage) GetBlock(blk string) (*models.Block, error) {
 	resp, err := blockStorage.database.DB.Query(`
-		SELECT * FROM block WHERE Hash = ?
+		SELECT * FROM block WHERE hash = ?
 	`, blk)
 	if err != nil {
 		return nil, err
 	}
 
-	var (
-		tm time.Time
-		protocol, chainID, hash, header, metadata, ops string
-		full []byte
-	)
+	var tm time.Time
+	block := new(models.Block)
+	var fitness string
 
 	resp.Next()
-	err = resp.Scan(&protocol, &chainID, &hash, &tm, &header, &metadata, &ops)
+	err = resp.Scan(&block.Protocol,
+		&block.ChainID,
+		&block.Hash,
+		&block.Header.BakerFee,
+		&block.Metadata.LevelInfo.Level,
+		&block.Header.Predecessor,
+		&block.Header.Priority,
+		&tm,
+		&block.Header.ValidationPass,
+		&block.Header.OperationsHash,
+		&fitness,
+		&block.Header.Signature,
+		&block.Metadata.Baker,
+		&block.Metadata.LevelInfo.Cycle,
+		&block.Metadata.LevelInfo.CyclePosition,
+		&block.Metadata.ConsumedGas)
 	if err != nil {
 		return nil, err
 	}
 
-	bts := [][]byte{[]byte("{\"protocol\":\"" + protocol + "\""),
-		[]byte("\"chain_id\":\"" + chainID + "\""),
-		[]byte("\"hash\":\"" + hash + "\""),
-		[]byte("\"header\":" + header),
-		[]byte("\"metadata\":" + metadata),
-		[]byte("\"operations\":" + ops + "}")}
+	block.Header.Timestamp = tm.String()
+	block.Header.Fitness = strings.Split(fitness, ",")
 
-	full = bytes.Join(bts, []byte(","))
-
-	block, err := models.UnmarshalBlock(full)
-	if err != nil {
-		return nil, err
-	}
-
-	return &block, nil
+	return block, nil
 }
 
 func (blockStorage *BlockStorage) SaveBlock(block *models.Block) error {
@@ -150,32 +160,36 @@ func (blockStorage *BlockStorage) GetBlocks(offset, limit int) ([]*models.Block,
 
 	var (
 		tm time.Time
-		protocol, chainID, hash, header, metadata, ops string
-		full []byte
+		fitness string
 		blocks []*models.Block
 	)
 
 	for resp.Next() {
-		err = resp.Scan(&protocol, &chainID, &hash, &tm, &header, &metadata, &ops)
+		block := new(models.Block)
+		err = resp.Scan(&block.Protocol,
+			&block.ChainID,
+			&block.Hash,
+			&block.Header.BakerFee,
+			&block.Metadata.LevelInfo.Level,
+			&block.Header.Predecessor,
+			&block.Header.Priority,
+			&tm,
+			&block.Header.ValidationPass,
+			&block.Header.OperationsHash,
+			&fitness,
+			&block.Header.Signature,
+			&block.Metadata.Baker,
+			&block.Metadata.LevelInfo.Cycle,
+			&block.Metadata.LevelInfo.CyclePosition,
+			&block.Metadata.ConsumedGas)
 		if err != nil {
 			return nil, err
 		}
 
-		bts := [][]byte{[]byte("{\"protocol\":\"" + protocol + "\""),
-			[]byte("\"chain_id\":\"" + chainID + "\""),
-			[]byte("\"hash\":\"" + hash + "\""),
-			[]byte("\"header\":" + header),
-			[]byte("\"metadata\":" + metadata),
-			[]byte("\"operations\":" + ops + "}")}
+		block.Header.Timestamp = tm.String()
+		block.Header.Fitness = strings.Split(fitness, ",")
 
-		full = bytes.Join(bts, []byte(","))
-
-		block, err := models.UnmarshalBlock(full)
-		if err != nil {
-			return nil, err
-		}
-
-		blocks = append(blocks, &block)
+		blocks = append(blocks, block)
 	}
 
 	fmt.Println(len(blocks))
