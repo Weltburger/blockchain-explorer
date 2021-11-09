@@ -14,7 +14,7 @@ type BlockStorage struct {
 }
 
 func (blockStorage *BlockStorage) Prepare() *sql.Stmt {
-	st, err := blockStorage.database.Tx.Prepare(`
+	st, err := blockStorage.database.BlockTx.Prepare(`
 		INSERT INTO blocks.block (
 			protocol,
 			chain_id,
@@ -55,7 +55,7 @@ func (blockStorage *BlockStorage) Exc(data *models.Block) error {
 
 
 
-	if _, err := blockStorage.database.Stmt.Exec(
+	if _, err := blockStorage.database.BlockStmt.Exec(
 		data.Protocol,
 		data.ChainID,
 		data.Hash,
@@ -80,12 +80,12 @@ func (blockStorage *BlockStorage) Exc(data *models.Block) error {
 }
 
 func (blockStorage *BlockStorage) Cmt() error {
-	if err := blockStorage.database.Tx.Commit(); err != nil {
+	if err := blockStorage.database.BlockTx.Commit(); err != nil {
 		return err
 	}
 
-	blockStorage.database.Tx, _ = blockStorage.database.DB.Begin()
-	blockStorage.database.Stmt = blockStorage.Prepare()
+	blockStorage.database.BlockTx, _ = blockStorage.database.DB.Begin()
+	blockStorage.database.BlockStmt = blockStorage.Prepare()
 
 	return nil
 }

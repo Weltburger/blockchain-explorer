@@ -21,15 +21,19 @@ CREATE TABLE IF NOT EXISTS blocks.block (
   PARTITION BY toYYYYMMDD(timestamp)
   ORDER BY (level, hash);
 
-CREATE TABLE IF NOT EXISTS blocks.block (
-    Protocol        String,
-    ChainID         String,
-    Hash            String,
-    Timestamp       DateTime,
-    Header          String,
-    Metadata        String,
-    Operations      String
-) engine = MergeTree()
-      PARTITION BY toYYYYMMDD(Timestamp)
-      ORDER BY (Hash)
-
+CREATE TABLE IF NOT EXISTS blocks.transactions (
+    `block_hash`        String,
+    `hash`              String,
+    `branch`            String,
+    `source`            String,
+    `destination`       String,
+    `fee`               String,
+    `counter`           String,
+    `gas_limit`         String,
+    `amount`            String,
+    `consumed_milligas` String,
+    `storage_size`      String,
+    `signature`         String
+) ENGINE = MergeTree()
+      PARTITION BY (block_hash)
+      ORDER BY (branch, hash);

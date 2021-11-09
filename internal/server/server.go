@@ -49,9 +49,34 @@ func (s *Server) CheckBlocks() {
 		if err != nil {
 			log.Fatal(err)
 		}*/
+		//parseTransactions(&block)
 		//fmt.Println(block)
+		transaction := new(models.Transaction)
+
 		for i := 0; i < len(block.Operations[3]); i++ {
-			fmt.Println(block.Operations[3][i])
+			for j := 0; j < len(block.Operations[3][i].Contents); j++ {
+				transaction.BlockHash = block.Hash
+				transaction.Hash = block.Operations[3][i].Hash
+				transaction.Branch = block.Operations[3][i].Branch
+				transaction.Destination = block.Operations[3][i].Contents[j].Destination
+				transaction.Source = transaction.Destination
+				transaction.Fee = block.Operations[3][i].Contents[j].Fee
+				transaction.Counter = block.Operations[3][i].Contents[j].Counter
+				transaction.GasLimit = block.Operations[3][i].Contents[j].GasLimit
+				transaction.Amount = block.Operations[3][i].Contents[j].Amount
+				transaction.ConsumedMilligas = block.Operations[3][i].Contents[j].Metadata.OperationResult.ConsumedMilligas
+				transaction.StorageSize = block.Operations[3][i].Contents[j].Metadata.OperationResult.StorageSize
+				transaction.Signature = block.Operations[3][i].Signature
+
+				err := s.Controller.DB.TransactionStorage().SaveTransaction(transaction)
+				if err != nil {
+					return
+				}
+			}
+		}
+		err = s.Controller.DB.TransactionStorage().Cmt()
+		if err != nil {
+			return
 		}
 
 		time.Sleep(time.Second * 30)
@@ -79,4 +104,9 @@ func (s *Server) Crawl(startPosHash string) {
 
 		time.Sleep(time.Second * 30)
 	}
+}
+
+func parseTransactions(block *models.Block) error {
+
+	return nil
 }
