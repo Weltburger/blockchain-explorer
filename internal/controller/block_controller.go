@@ -40,7 +40,5 @@ func (blockController *BlockController) GetBlocks(c echo.Context) error {
 		return err
 	}
 
-	fmt.Println(blocks)
-
 	return c.JSON(http.StatusOK, blocks)
 }

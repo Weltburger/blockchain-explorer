@@ -76,3 +76,150 @@ func (transactionStorage *TransactionStorage) SaveTransaction(transaction *model
 
 	return nil
 }
+
+func (transactionStorage *TransactionStorage) GetTransactionsByBlock(block string) ([]*models.Transaction, error) {
+	resp, err := transactionStorage.database.DB.Query(`
+		SELECT * FROM transactions 
+		WHERE block_hash = ?
+	`, block)
+	if err != nil {
+		return nil, err
+	}
+
+	var transactions []*models.Transaction
+
+	for resp.Next() {
+		transaction := new(models.Transaction)
+		err = resp.Scan(&transaction.BlockHash,
+			&transaction.Hash,
+			&transaction.Branch,
+			&transaction.Source,
+			&transaction.Destination,
+			&transaction.Fee,
+			&transaction.Counter,
+			&transaction.GasLimit,
+			&transaction.Amount,
+			&transaction.ConsumedMilligas,
+			&transaction.StorageSize,
+			&transaction.Signature)
+		if err != nil {
+			return nil, err
+		}
+
+		transactions = append(transactions, transaction)
+	}
+
+	return transactions, nil
+}
+
+func (transactionStorage *TransactionStorage) GetTransactions(offset, limit int) ([]*models.Transaction, error) {
+	if offset < 0 {
+		offset = 0
+	}
+	if limit < 0 {
+		limit = 1
+	}
+
+	resp, err := transactionStorage.database.DB.Query(`
+		SELECT * FROM transactions 
+		LIMIT ?, ?
+	`, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	var transactions []*models.Transaction
+
+	for resp.Next() {
+		transaction := new(models.Transaction)
+		err = resp.Scan(&transaction.BlockHash,
+			&transaction.Hash,
+			&transaction.Branch,
+			&transaction.Source,
+			&transaction.Destination,
+			&transaction.Fee,
+			&transaction.Counter,
+			&transaction.GasLimit,
+			&transaction.Amount,
+			&transaction.ConsumedMilligas,
+			&transaction.StorageSize,
+			&transaction.Signature)
+		if err != nil {
+			return nil, err
+		}
+
+		transactions = append(transactions, transaction)
+	}
+
+	return transactions, nil
+}
+
+func (transactionStorage *TransactionStorage) GetTransactionsByAddress(address string) ([]*models.Transaction, error) {
+	resp, err := transactionStorage.database.DB.Query(`
+		SELECT * FROM transactions 
+		WHERE source = ? OR destination = ?
+	`, address, address)
+	if err != nil {
+		return nil, err
+	}
+
+	var transactions []*models.Transaction
+
+	for resp.Next() {
+		transaction := new(models.Transaction)
+		err = resp.Scan(&transaction.BlockHash,
+			&transaction.Hash,
+			&transaction.Branch,
+			&transaction.Source,
+			&transaction.Destination,
+			&transaction.Fee,
+			&transaction.Counter,
+			&transaction.GasLimit,
+			&transaction.Amount,
+			&transaction.ConsumedMilligas,
+			&transaction.StorageSize,
+			&transaction.Signature)
+		if err != nil {
+			return nil, err
+		}
+
+		transactions = append(transactions, transaction)
+	}
+
+	return transactions, nil
+}
+
+func (transactionStorage *TransactionStorage) GetTransactionsByHash(hash string) ([]*models.Transaction, error) {
+	resp, err := transactionStorage.database.DB.Query(`
+		SELECT * FROM transactions 
+		WHERE hash = ? 
+	`, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	var transactions []*models.Transaction
+
+	for resp.Next() {
+		transaction := new(models.Transaction)
+		err = resp.Scan(&transaction.BlockHash,
+			&transaction.Hash,
+			&transaction.Branch,
+			&transaction.Source,
+			&transaction.Destination,
+			&transaction.Fee,
+			&transaction.Counter,
+			&transaction.GasLimit,
+			&transaction.Amount,
+			&transaction.ConsumedMilligas,
+			&transaction.StorageSize,
+			&transaction.Signature)
+		if err != nil {
+			return nil, err
+		}
+
+		transactions = append(transactions, transaction)
+	}
+
+	return transactions, nil
+}

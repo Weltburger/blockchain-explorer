@@ -5,8 +5,8 @@ import (
 )
 
 type Controller struct {
-	DB              *storage.Database
-	blockController *BlockController
+	DB                    *storage.Database
+	blockController       *BlockController
 	transactionController *TransactionController
 }
 

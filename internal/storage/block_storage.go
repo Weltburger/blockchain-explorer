@@ -3,7 +3,6 @@ package storage
 import (
 	"database/sql"
 	"explorer/models"
-	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -192,6 +191,5 @@ func (blockStorage *BlockStorage) GetBlocks(offset, limit int) ([]*models.Block,
 		blocks = append(blocks, block)
 	}
 
-	fmt.Println(len(blocks))
 	return blocks, nil
 }
