@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS blocks.block
+
+DROP DATABASE IF EXISTS blocks
