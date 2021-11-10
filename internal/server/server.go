@@ -9,6 +9,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
+	"sync"
 	"time"
 )
 
@@ -50,24 +52,25 @@ func (s *Server) CheckBlocks() {
 		resp.Body.Close()
 		block, _ := models.UnmarshalBlock(body)
 
-		/*err = s.Controller.DB.BlockStorage().SaveBlock(&block)
+		err = s.Controller.DB.BlockStorage().SaveBlock(&block)
 		if err != nil {
 			log.Fatal(err)
 		}
 		err = s.parseTransactions(&block)
 		if err != nil {
 			log.Fatal(err)
-		}*/
+		}
 		fmt.Println(block)
 
 		time.Sleep(time.Second * 30)
 	}
 }
 
-func (s *Server) Crawl(startPosHash string) {
-	for {
-		// правильное распараллеливание + ограничение по запросам?
-		url := "https://mainnet-tezos.giganode.io/chains/main/blocks/" + startPosHash + "-"
+func (s *Server) Crawl(startPos uint64) {
+	wg := &sync.WaitGroup{}
+
+	for startPos > 1 {
+		url := "https://mainnet-tezos.giganode.io/chains/main/blocks/" + strconv.FormatUint(startPos, 10)
 		resp, err := http.Get(url)
 		if err != nil {
 			log.Fatal(err)
@@ -77,13 +80,26 @@ func (s *Server) Crawl(startPosHash string) {
 		resp.Body.Close()
 		block, _ := models.UnmarshalBlock(body)
 
-		/*err = s.Controller.DB.BlockStorage().SaveBlock(&block)
-		if err != nil {
-			log.Fatal(err)
-		}*/
-		fmt.Println(block)
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			err = s.Controller.DB.BlockStorage().SaveBlock(&block)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}()
+		go func() {
+			defer wg.Done()
+			err = s.parseTransactions(&block)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}()
+		wg.Wait()
 
-		time.Sleep(time.Second * 30)
+		fmt.Println(block)
+		startPos--
+		time.Sleep(time.Second * 1)
 	}
 }
 
