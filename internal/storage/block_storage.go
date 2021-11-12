@@ -10,10 +10,12 @@ import (
 
 type BlockStorage struct {
 	database *Database
+	Tx       *sql.Tx
+	Stmt     *sql.Stmt
 }
 
-func (blockStorage *BlockStorage) Prepare() *sql.Stmt {
-	st, err := blockStorage.database.BlockTx.Prepare(`
+func PrepareBlock(tx *sql.Tx) *sql.Stmt {
+	st, err := tx.Prepare(`
 		INSERT INTO blocks.block (
 			protocol,
 			chain_id,
@@ -52,9 +54,7 @@ func (blockStorage *BlockStorage) Exc(data *models.Block) error {
 
 	fitness := strings.Join(data.Header.Fitness, ",")
 
-
-
-	if _, err := blockStorage.database.BlockStmt.Exec(
+	if _, err := blockStorage.Stmt.Exec(
 		data.Protocol,
 		data.ChainID,
 		data.Hash,
@@ -79,12 +79,9 @@ func (blockStorage *BlockStorage) Exc(data *models.Block) error {
 }
 
 func (blockStorage *BlockStorage) Cmt() error {
-	if err := blockStorage.database.BlockTx.Commit(); err != nil {
+	if err := blockStorage.Tx.Commit(); err != nil {
 		return err
 	}
-
-	blockStorage.database.BlockTx, _ = blockStorage.database.DB.Begin()
-	blockStorage.database.BlockStmt = blockStorage.Prepare()
 
 	return nil
 }
@@ -158,9 +155,9 @@ func (blockStorage *BlockStorage) GetBlocks(offset, limit int) ([]*models.Block,
 	}
 
 	var (
-		tm time.Time
+		tm      time.Time
 		fitness string
-		blocks []*models.Block
+		blocks  []*models.Block
 	)
 
 	for resp.Next() {

@@ -15,13 +15,13 @@ import (
 )
 
 type Server struct {
-	Router *echo.Echo
+	Router     *echo.Echo
 	Controller *controller.Controller
 }
 
 func NewServer() *Server {
 	server := &Server{
-		Router: echo.New(),
+		Router:     echo.New(),
 		Controller: controller.New(),
 	}
 
@@ -34,9 +34,7 @@ func NewServer() *Server {
 	apiGroup.GET("/block/:block", server.Controller.BlockController().GetBlock)
 
 	apiGroup.GET("/transactions", server.Controller.TransactionController().GetTransactions)
-	apiGroup.GET("/transactions/block/:block", server.Controller.TransactionController().GetTransactionsByBlock)
-	apiGroup.GET("/transactions/address/:address", server.Controller.TransactionController().GetTransactionsByAddress)
-	apiGroup.GET("/transactions/hash/:hash", server.Controller.TransactionController().GetTransactionsByHash)
+
 
 	return server
 }
@@ -52,14 +50,14 @@ func (s *Server) CheckBlocks() {
 		resp.Body.Close()
 		block, _ := models.UnmarshalBlock(body)
 
-		err = s.Controller.DB.BlockStorage().SaveBlock(&block)
+		/*err = s.Controller.DB.BlockStorage().SaveBlock(&block)
 		if err != nil {
 			log.Fatal(err)
 		}
 		err = s.parseTransactions(&block)
 		if err != nil {
 			log.Fatal(err)
-		}
+		}*/
 		fmt.Println(block)
 
 		time.Sleep(time.Second * 30)
@@ -104,6 +102,7 @@ func (s *Server) Crawl(startPos uint64) {
 }
 
 func (s *Server) parseTransactions(block *models.Block) error {
+	transactionStorage := s.Controller.DB.TransactionStorage()
 	transaction := new(models.Transaction)
 
 	for i := 0; i < len(block.Operations[3]); i++ {
@@ -121,13 +120,13 @@ func (s *Server) parseTransactions(block *models.Block) error {
 			transaction.StorageSize = block.Operations[3][i].Contents[j].Metadata.OperationResult.StorageSize
 			transaction.Signature = block.Operations[3][i].Signature
 
-			err := s.Controller.DB.TransactionStorage().SaveTransaction(transaction)
+			err := transactionStorage.SaveTransaction(transaction)
 			if err != nil {
 				return err
 			}
 		}
 	}
-	err := s.Controller.DB.TransactionStorage().Cmt()
+	err := transactionStorage.Cmt()
 	if err != nil {
 		return err
 	}

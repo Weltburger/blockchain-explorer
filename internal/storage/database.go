@@ -7,33 +7,25 @@ import (
 )
 
 type Database struct {
-	DB                 *sql.DB
-	BlockTx            *sql.Tx
-	BlockStmt          *sql.Stmt
-	TransactionTx      *sql.Tx
-	TransactionStmt    *sql.Stmt
-	blockStorage       *BlockStorage
-	transactionStorage *TransactionStorage
+	DB *sql.DB
 }
 
 func (database *Database) BlockStorage() *BlockStorage {
-	if database.blockStorage != nil {
-		return database.blockStorage
+	trx, _ := database.DB.Begin()
+	return &BlockStorage{
+		database: database,
+		Tx:       trx,
+		Stmt:     PrepareBlock(trx),
 	}
-
-	database.blockStorage = &BlockStorage{database: database}
-
-	return database.blockStorage
 }
 
 func (database *Database) TransactionStorage() *TransactionStorage {
-	if database.transactionStorage != nil {
-		return database.transactionStorage
+	trx, _ := database.DB.Begin()
+	return &TransactionStorage{
+		database: database,
+		Tx:       trx,
+		Stmt:     PrepareTransaction(trx),
 	}
-
-	database.transactionStorage = &TransactionStorage{database: database}
-
-	return database.transactionStorage
 }
 
 func GetDB() *Database {

@@ -34,7 +34,6 @@ func (blockController *BlockController) GetBlocks(c echo.Context) error {
 		offset = 0
 	}
 
-
 	blocks, err := blockController.controller.DB.BlockStorage().GetBlocks(offset, limit)
 	if err != nil {
 		return err

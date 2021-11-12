@@ -7,6 +7,6 @@ import (
 func main() {
 	serv := server.NewServer()
 	defer serv.Controller.DB.CloseDB()
-	go serv.Crawl(1851828)
+	go serv.CheckBlocks()
 	serv.Router.Logger.Fatal(serv.Router.Start(":1323"))
 }

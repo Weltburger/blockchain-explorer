@@ -11,50 +11,20 @@ type TransactionController struct {
 }
 
 func (transactionController *TransactionController) GetTransactions(c echo.Context) error {
+	blk := c.QueryParam("block")
+	acc := c.QueryParam("account")
+	hash := c.QueryParam("hash")
+
 	limit, err := strconv.Atoi(c.QueryParam("limit"))
-	if err != nil {
+	if err != nil || limit < 1 {
 		limit = 1
 	}
 	offset, err := strconv.Atoi(c.QueryParam("offset"))
-	if err != nil {
+	if err != nil  || offset < 0{
 		offset = 0
 	}
 
-
-	transactions, err := transactionController.controller.DB.TransactionStorage().GetTransactions(offset, limit)
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(http.StatusOK, transactions)
-}
-
-func (transactionController *TransactionController) GetTransactionsByBlock(c echo.Context) error {
-	blk := c.Param("block")
-
-	transactions, err := transactionController.controller.DB.TransactionStorage().GetTransactionsByBlock(blk)
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(http.StatusOK, transactions)
-}
-
-func (transactionController *TransactionController) GetTransactionsByAddress(c echo.Context) error {
-	addr := c.Param("address")
-
-	transactions, err := transactionController.controller.DB.TransactionStorage().GetTransactionsByAddress(addr)
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(http.StatusOK, transactions)
-}
-
-func (transactionController *TransactionController) GetTransactionsByHash(c echo.Context) error {
-	hash := c.Param("hash")
-
-	transactions, err := transactionController.controller.DB.TransactionStorage().GetTransactionsByHash(hash)
+	transactions, err := transactionController.controller.DB.TransactionStorage().GetTransactions(offset, limit, blk, hash, acc)
 	if err != nil {
 		return err
 	}

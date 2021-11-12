@@ -3,6 +3,7 @@ module explorer
 go 1.16
 
 require (
+	github.com/Masterminds/squirrel v1.5.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/labstack/echo/v4 v4.6.1 // indirect
 	github.com/mailru/go-clickhouse v1.7.0
