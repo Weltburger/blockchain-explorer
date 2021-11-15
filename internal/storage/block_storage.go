@@ -88,7 +88,23 @@ func (blockStorage *BlockStorage) Cmt() error {
 
 func (blockStorage *BlockStorage) GetBlock(blk string) (*models.Block, error) {
 	resp, err := blockStorage.database.DB.Query(`
-		SELECT * FROM block WHERE hash = ?
+		SELECT protocol,
+			   chain_id,
+			   hash,
+			   baker_fees,
+			   "level",
+			   predecessor,
+			   priority,
+			   "timestamp",
+			   validation_pass,
+			   validation_hash,
+			   fitness,
+			   signature,
+			   baker,
+			   cycle_num,
+			   cycle_position,
+			   consumed_gas 
+		FROM block WHERE hash = ?
 	`, blk)
 	if err != nil {
 		return nil, err
@@ -147,7 +163,23 @@ func (blockStorage *BlockStorage) GetBlocks(offset, limit int) ([]*models.Block,
 	}
 
 	resp, err := blockStorage.database.DB.Query(`
-		SELECT * FROM block 
+		SELECT protocol,
+			   chain_id,
+			   hash,
+			   baker_fees,
+			   "level",
+			   predecessor,
+			   priority,
+			   "timestamp",
+			   validation_pass,
+			   validation_hash,
+			   fitness,
+			   signature,
+			   baker,
+			   cycle_num,
+			   cycle_position,
+			   consumed_gas 
+		FROM block 
 		LIMIT ?, ?
 	`, offset, limit)
 	if err != nil {
