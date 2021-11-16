@@ -2,6 +2,7 @@ package server
 
 import (
 	"explorer/internal/controller"
+	"explorer/internal/storage"
 	"explorer/models"
 	"fmt"
 	"github.com/labstack/echo/v4"
@@ -54,6 +55,7 @@ func (s *Server) CheckBlocks() {
 }
 
 func (s *Server) Crawl(startPos int64) {
+	mux := &sync.Mutex{}
 	var step int64 = 10000
 	arr := make([]*models.Block, 0, step)
 	ch := make(chan *models.Block, 1000)
@@ -61,24 +63,23 @@ func (s *Server) Crawl(startPos int64) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
-	go func() {
+	go func(mux *sync.Mutex) {
 		defer wg.Done()
 		for {
 			select {
 			case str := <-ch:
+				mux.Lock()
 				arr = append(arr, str)
+				mux.Unlock()
 			case b := <- chB:
 				if b == true {
 					fmt.Println(startPos)
 					startPos -= step
-					for _, val := range arr{
-						saveData(s, val)
-					}
+					saveDataRange(s, arr)
 					if startPos < 10000 {
 						arr = make([]*models.Block, 0, startPos)
 						go crawlStep(startPos, &ch, &chB)
 					} else {
-						fmt.Println("Done", len(arr), arr)
 						arr = make([]*models.Block, 0, step)
 						go crawlLess(startPos, &ch, &chB)
 					}
@@ -89,7 +90,7 @@ func (s *Server) Crawl(startPos int64) {
 				break
 			}
 		}
-	}()
+	}(mux)
 
 	if startPos < step {
 		go crawlLess(startPos, &ch, &chB)
@@ -132,7 +133,7 @@ func crawlStep(start int64, ch *chan *models.Block, chB *chan bool) {
 
 func crawlLess(start int64, ch *chan *models.Block, chB *chan bool) {
 	wg := new(sync.WaitGroup)
-	for i := 1; i < int(start)+1; i++ {
+	for i := 1; i < int(start)+1; {
 		wg.Add(1)
 		go func(wg *sync.WaitGroup, i int) {
 			defer wg.Done()
@@ -142,7 +143,11 @@ func crawlLess(start int64, ch *chan *models.Block, chB *chan bool) {
 				log.Fatal(err)
 			}
 
-			*ch <- block
+			if block.Hash != "" {
+				fmt.Println(*block)
+				i++
+				*ch <- block
+			}
 		}(wg, i)
 	}
 
@@ -181,7 +186,7 @@ func saveData(s *Server, block *models.Block) {
 	}()
 	go func() {
 		defer wg.Done()
-		err := s.parseTransactions(block)
+		err := s.saveTransactions(block)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -190,10 +195,77 @@ func saveData(s *Server, block *models.Block) {
 	wg.Wait()
 }
 
-func (s *Server) parseTransactions(block *models.Block) error {
-	transactionStorage := s.Controller.DB.TransactionStorage()
-	transaction := new(models.Transaction)
+func saveDataRange(s *Server, blocks []*models.Block) {
+	wg := &sync.WaitGroup{}
+	bs := s.Controller.DB.BlockStorage()
 
+	wg.Add(2)
+	go func(bs *storage.BlockStorage) {
+		defer wg.Done()
+		for _, val := range blocks {
+			err := bs.Exc(val)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		err := bs.Cmt()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(bs)
+
+	go func() {
+		defer wg.Done()
+		err := s.saveRangeTransactions(blocks)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	wg.Wait()
+}
+
+func (s *Server) saveTransactions(block *models.Block) error {
+	transactionStorage := s.Controller.DB.TransactionStorage()
+
+	transactions := getTransactions(block)
+
+	for _, tr := range transactions {
+		err := transactionStorage.Exc(tr)
+		if err != nil {
+			return err
+		}
+	}
+	err := transactionStorage.Cmt()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Server) saveRangeTransactions(blocks []*models.Block) error {
+	transactionStorage := s.Controller.DB.TransactionStorage()
+
+	for _, block := range blocks {
+		transactions := getTransactions(block)
+		for _, tr := range transactions {
+			err := transactionStorage.Exc(tr)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	err := transactionStorage.Cmt()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func getTransactions(block *models.Block) []*models.Transaction {
+	transaction := new(models.Transaction)
+	transactions := make([]*models.Transaction, 0)
 	for i := 0; i < len(block.Operations[3]); i++ {
 		for j := 0; j < len(block.Operations[3][i].Contents); j++ {
 			transaction.BlockHash = block.Hash
@@ -209,15 +281,9 @@ func (s *Server) parseTransactions(block *models.Block) error {
 			transaction.StorageSize = block.Operations[3][i].Contents[j].Metadata.OperationResult.StorageSize
 			transaction.Signature = block.Operations[3][i].Signature
 
-			err := transactionStorage.SaveTransaction(transaction)
-			if err != nil {
-				return err
-			}
+			transactions = append(transactions, transaction)
 		}
 	}
-	err := transactionStorage.Cmt()
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return transactions
 }
