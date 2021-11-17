@@ -58,7 +58,7 @@ func (s *Server) Crawl(startPos int64) {
 	mux := &sync.Mutex{}
 	var step int64 = 10000
 	arr := make([]*models.Block, 0, step)
-	ch := make(chan *models.Block, 1000)
+	ch := make(chan *models.Block/*, 1000*/)
 	chB := make(chan bool)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -78,10 +78,10 @@ func (s *Server) Crawl(startPos int64) {
 					saveDataRange(s, arr)
 					if startPos < 10000 {
 						arr = make([]*models.Block, 0, startPos)
-						go crawlStep(startPos, &ch, &chB)
+						go crawlLess(startPos, &ch, &chB)
 					} else {
 						arr = make([]*models.Block, 0, step)
-						go crawlLess(startPos, &ch, &chB)
+						go crawlStep(startPos, &ch, &chB)
 					}
 				} else {
 					return
@@ -99,9 +99,7 @@ func (s *Server) Crawl(startPos int64) {
 	}
 	wg.Wait()
 
-	for _, val := range arr{
-		saveData(s, val)
-	}
+	saveDataRange(s, arr)
 }
 
 func crawlStep(start int64, ch *chan *models.Block, chB *chan bool) {
@@ -127,7 +125,7 @@ func crawlStep(start int64, ch *chan *models.Block, chB *chan bool) {
 	}
 
 	wg.Wait()
-	time.Sleep(time.Millisecond*50)
+	//time.Sleep(time.Millisecond*50)
 	*chB <- true
 }
 
@@ -152,7 +150,7 @@ func crawlLess(start int64, ch *chan *models.Block, chB *chan bool) {
 	}
 
 	wg.Wait()
-	time.Sleep(time.Millisecond*50)
+	//time.Sleep(time.Millisecond*50)
 	*chB <- false
 }
 
@@ -186,7 +184,7 @@ func saveData(s *Server, block *models.Block) {
 	}()
 	go func() {
 		defer wg.Done()
-		err := s.saveTransactions(block)
+		err := saveTransactions(s, block)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -216,7 +214,7 @@ func saveDataRange(s *Server, blocks []*models.Block) {
 
 	go func() {
 		defer wg.Done()
-		err := s.saveRangeTransactions(blocks)
+		err := saveRangeTransactions(s, blocks)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -225,7 +223,7 @@ func saveDataRange(s *Server, blocks []*models.Block) {
 	wg.Wait()
 }
 
-func (s *Server) saveTransactions(block *models.Block) error {
+func saveTransactions(s *Server, block *models.Block) error {
 	transactionStorage := s.Controller.DB.TransactionStorage()
 
 	transactions := getTransactions(block)
@@ -243,7 +241,7 @@ func (s *Server) saveTransactions(block *models.Block) error {
 	return nil
 }
 
-func (s *Server) saveRangeTransactions(blocks []*models.Block) error {
+func saveRangeTransactions(s *Server, blocks []*models.Block) error {
 	transactionStorage := s.Controller.DB.TransactionStorage()
 
 	for _, block := range blocks {
