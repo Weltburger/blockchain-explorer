@@ -3,9 +3,9 @@ module explorer
 go 1.16
 
 require (
-	github.com/Masterminds/squirrel v1.5.1 // indirect
+	github.com/Masterminds/squirrel v1.5.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
-	github.com/labstack/echo/v4 v4.6.1 // indirect
+	github.com/labstack/echo/v4 v4.6.1
 	github.com/mailru/go-clickhouse v1.7.0
 	github.com/mattn/go-colorable v0.1.11 // indirect
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
