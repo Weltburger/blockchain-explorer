@@ -11,20 +11,20 @@ type Database struct {
 }
 
 func (database *Database) BlockStorage() *BlockStorage {
-	trx, _ := database.DB.Begin()
+	//trx, _ := database.DB.Begin()
 	return &BlockStorage{
 		database: database,
-		Tx:       trx,
-		Stmt:     PrepareBlock(trx),
+		/*Tx:       trx,
+		Stmt:     PrepareBlock(trx),*/
 	}
 }
 
 func (database *Database) TransactionStorage() *TransactionStorage {
-	trx, _ := database.DB.Begin()
+	//trx, _ := database.DB.Begin()
 	return &TransactionStorage{
 		database: database,
-		Tx:       trx,
-		Stmt:     PrepareTransaction(trx),
+		/*Tx:       trx,
+		Stmt:     PrepareTransaction(trx),*/
 	}
 }
 

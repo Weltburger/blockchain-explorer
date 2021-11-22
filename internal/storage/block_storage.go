@@ -3,7 +3,6 @@ package storage
 import (
 	"database/sql"
 	"explorer/models"
-	"log"
 	"strings"
 	"time"
 )
@@ -14,8 +13,13 @@ type BlockStorage struct {
 	Stmt     *sql.Stmt
 }
 
-func PrepareBlock(tx *sql.Tx) *sql.Stmt {
-	st, err := tx.Prepare(`
+func (blockStorage *BlockStorage) PrepareBlockTx() error {
+	trx, err := blockStorage.database.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	st, err := trx.Prepare(`
 		INSERT INTO blocks.block (
 			protocol,
 			chain_id,
@@ -36,12 +40,13 @@ func PrepareBlock(tx *sql.Tx) *sql.Stmt {
 		) VALUES (
 			?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 		)`)
-
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	return st
+	blockStorage.Stmt, blockStorage.Tx = st, trx
+
+	return nil
 }
 
 func (blockStorage *BlockStorage) Exc(data *models.Block) error {
@@ -72,6 +77,8 @@ func (blockStorage *BlockStorage) Exc(data *models.Block) error {
 		data.Metadata.LevelInfo.CyclePosition,
 		data.Metadata.ConsumedGas,
 	); err != nil {
+		_ = blockStorage.Stmt.Close()
+		_ = blockStorage.Tx.Rollback()
 		return err
 	}
 
@@ -80,6 +87,7 @@ func (blockStorage *BlockStorage) Exc(data *models.Block) error {
 
 func (blockStorage *BlockStorage) Cmt() error {
 	if err := blockStorage.Tx.Commit(); err != nil {
+		_ = blockStorage.Tx.Rollback()
 		return err
 	}
 
@@ -111,8 +119,8 @@ func (blockStorage *BlockStorage) GetBlock(blk string) (*models.Block, error) {
 	}
 
 	var tm time.Time
-	block := new(models.Block)
 	var fitness string
+	block := new(models.Block)
 
 	resp.Next()
 	err = resp.Scan(&block.Protocol,
@@ -154,7 +162,7 @@ func (blockStorage *BlockStorage) SaveBlock(block *models.Block) error {
 	return nil
 }
 
-func (blockStorage *BlockStorage) GetBlocks(offset, limit int) ([]*models.Block, error) {
+func (blockStorage *BlockStorage) GetBlocks(offset, limit int) ([]models.Block, error) {
 	if offset < 0 {
 		offset = 0
 	}
@@ -189,11 +197,11 @@ func (blockStorage *BlockStorage) GetBlocks(offset, limit int) ([]*models.Block,
 	var (
 		tm      time.Time
 		fitness string
-		blocks  []*models.Block
+		blocks  []models.Block
 	)
 
+	block := new(models.Block)
 	for resp.Next() {
-		block := new(models.Block)
 		err = resp.Scan(&block.Protocol,
 			&block.ChainID,
 			&block.Hash,
@@ -217,7 +225,7 @@ func (blockStorage *BlockStorage) GetBlocks(offset, limit int) ([]*models.Block,
 		block.Header.Timestamp = tm.String()
 		block.Header.Fitness = strings.Split(fitness, ",")
 
-		blocks = append(blocks, block)
+		blocks = append(blocks, *block)
 	}
 
 	return blocks, nil

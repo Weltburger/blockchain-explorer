@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"explorer/models"
+	"fmt"
 	sq "github.com/Masterminds/squirrel"
 	"log"
 )
@@ -13,8 +14,13 @@ type TransactionStorage struct {
 	Stmt     *sql.Stmt
 }
 
-func PrepareTransaction(tx *sql.Tx) *sql.Stmt {
-	st, err := tx.Prepare(`
+func (transactionStorage *TransactionStorage) PrepareTransactionTx() error {
+	trx, err := transactionStorage.database.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	st, err := trx.Prepare(`
 		INSERT INTO blocks.transactions (
 			block_hash, 
 			hash, 
@@ -31,12 +37,13 @@ func PrepareTransaction(tx *sql.Tx) *sql.Stmt {
 		) VALUES (
 			?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 		)`)
-
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	return st
+	transactionStorage.Stmt, transactionStorage.Tx = st, trx
+
+	return nil
 }
 
 func (transactionStorage *TransactionStorage) Exc(data *models.Transaction) error {
@@ -54,6 +61,8 @@ func (transactionStorage *TransactionStorage) Exc(data *models.Transaction) erro
 		data.StorageSize,
 		data.Signature,
 	); err != nil {
+		_ = transactionStorage.Stmt.Close()
+		_ = transactionStorage.Tx.Rollback()
 		return err
 	}
 
@@ -62,6 +71,7 @@ func (transactionStorage *TransactionStorage) Exc(data *models.Transaction) erro
 
 func (transactionStorage *TransactionStorage) Cmt() error {
 	if err := transactionStorage.Tx.Commit(); err != nil {
+		_ = transactionStorage.Tx.Rollback()
 		return err
 	}
 
@@ -77,15 +87,15 @@ func (transactionStorage *TransactionStorage) SaveTransaction(transaction *model
 	return nil
 }
 
-func (transactionStorage *TransactionStorage) GetTransactions(offset, limit int, blk, hash, acc string) ([]*models.Transaction, error) {
+func (transactionStorage *TransactionStorage) GetTransactions(offset, limit int, blk, hash, acc string) ([]models.Transaction, error) {
 	if blk != "" {
-		blk = "block_hash='"+ blk +"'"
+		blk = fmt.Sprintf("block_hash='%s'", blk)
 	}
 	if hash != "" {
-		hash = "hash='"+hash+"'"
+		hash = fmt.Sprintf("hash='%s'", hash)
 	}
 	if acc != "" {
-		acc = "(source='" + acc + "' OR destination='"+acc + "')"
+		acc = fmt.Sprintf("(source='%s' OR destination='%s')", acc, acc)
 	}
 	query, _, err := sq.Select("block_hash",
 								 "hash",
@@ -113,10 +123,10 @@ func (transactionStorage *TransactionStorage) GetTransactions(offset, limit int,
 		return nil, err
 	}
 
-	var transactions []*models.Transaction
+	var transactions []models.Transaction
+	transaction := new(models.Transaction)
 
 	for resp.Next() {
-		transaction := new(models.Transaction)
 		err = resp.Scan(&transaction.BlockHash,
 			&transaction.Hash,
 			&transaction.Branch,
@@ -133,7 +143,7 @@ func (transactionStorage *TransactionStorage) GetTransactions(offset, limit int,
 			return nil, err
 		}
 
-		transactions = append(transactions, transaction)
+		transactions = append(transactions, *transaction)
 	}
 
 	return transactions, nil
