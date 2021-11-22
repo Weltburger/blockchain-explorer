@@ -13,6 +13,7 @@ type Pool struct {
 	collector     chan *Task
 	runBackground chan bool
 	Mux			  *sync.Mutex
+	WG            *sync.WaitGroup
 }
 
 func NewPool(tasks []*Task, concurrency int) *Pool {
@@ -22,7 +23,7 @@ func NewPool(tasks []*Task, concurrency int) *Pool {
 		Counter: 0,
 		collector:   make(chan *Task),
 		Mux: new(sync.Mutex),
-
+		WG: new(sync.WaitGroup),
 	}
 }
 
@@ -32,7 +33,7 @@ func (p *Pool) AddTask(task *Task) {
 
 func (p *Pool) RunBackground() {
 	for i := 1; i <= p.concurrency; i++ {
-		worker := NewWorker(p.collector, i)
+		worker := NewWorker(p.collector, i, p.WG)
 		p.Workers = append(p.Workers, worker)
 		go worker.StartBackground()
 	}

@@ -11,11 +11,19 @@ import (
 )
 
 func (s *Server) Crawl(startPos int64) {
-	arr := make([]models.Block, 0, 50)
-	fail := make([]int64, 0)
+	stepSize := 500
+	arr := make([]models.Block, 0, stepSize)
 	ch := make(chan models.Block)
 	chB := make(chan bool)
+	chC := make(chan bool)
 	chE := make(chan *models.TaskErr)
+
+	defer func() {
+		close(ch)
+		close(chB)
+		close(chC)
+		close(chE)
+	}()
 
 	pool := workerpool.NewPool(nil, 10)
 	go pool.RunBackground()
@@ -34,7 +42,7 @@ func (s *Server) Crawl(startPos int64) {
 				fmt.Println(*block)
 				ch <- *block
 
-				if pool.Counter == 50 {
+				if pool.Counter == stepSize {
 					pool.Counter = 0
 					chB <- true
 				}
@@ -43,8 +51,9 @@ func (s *Server) Crawl(startPos int64) {
 				continue
 			}
 
-			if blockID == 1 {
-				chB <- false
+			if blockID == 0 {
+				pool.WG.Wait()
+				chC <- true
 			}
 			return nil
 		}
@@ -55,31 +64,41 @@ func (s *Server) Crawl(startPos int64) {
 
 	go func() {
 		defer wg.Done()
-		for {
-			select {
-			case str := <-ch:
-				arr = append(arr, str)
-			case b := <- chB:
-				if b == true {
+		ForLoop:
+			for {
+				select {
+				case str := <-ch:
+					arr = append(arr, str)
+				case <- chB:
 					err := saveData(s, arr...)
+					arr = make([]models.Block, 0, stepSize)
 					if err != nil {
+						fmt.Println("a", err)
 						return
 					}
+				case err := <-chE:
+					go func() {
+						fmt.Println(err)
+						task := workerpool.NewTask(f, err.ID, chE)
+						pool.AddTask(task)
+					}()
+				case <- chC:
+					//time.Sleep(time.Second * 20)
+					err := saveData(s, arr...)
+					if err != nil {
+						fmt.Println("b", err)
+						return
+					}
+					break ForLoop
+				default:
+					//break
 				}
-			case err := <-chE:
-				fmt.Println(err)
-				fail = append(fail, err.ID)
-				//go finish(left, ff, pool, chE, chB)
-				//fail = make([]int64, 0)
-			default:
-				//break
 			}
-		}
 	}()
 
 	go func() {
 		defer wg.Done()
-		for i := startPos; i > 0; i-- {
+		for i := startPos; i >= 0; i-- {
 			task := workerpool.NewTask(f, i, chE)
 			pool.AddTask(task)
 		}
@@ -87,57 +106,6 @@ func (s *Server) Crawl(startPos int64) {
 
 	wg.Wait()
 	pool.Stop()
-}
-
-func crawlStep(start int64, ch chan models.Block, chB chan bool) {
-	wg := new(sync.WaitGroup)
-
-	for i := 1; i < 11; i++ {
-		wg.Add(1)
-		go func(wg *sync.WaitGroup, i int) {
-			defer wg.Done()
-			for j := 1; j < 11; {
-				block, err := getData(strconv.FormatInt(start-int64(i*j), 10))
-				if err != nil {
-					log.Fatal(err)
-				}
-				if block.Hash != "" {
-					fmt.Println(*block)
-					j++
-					ch <- *block
-				}
-			}
-		}(wg, i)
-	}
-
-	wg.Wait()
-	//time.Sleep(time.Millisecond*50)
-	chB <- true
-}
-
-func crawlLess(start int64, ch chan models.Block, chB chan bool) {
-	wg := new(sync.WaitGroup)
-	for i := 1; i < int(start)+1; {
-		wg.Add(1)
-		go func(wg *sync.WaitGroup, i int) {
-			defer wg.Done()
-
-			block, err := getData(strconv.FormatInt(start-int64(i), 10))
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			if block.Hash != "" {
-				fmt.Println(*block)
-				i++
-				ch <- *block
-			}
-		}(wg, i)
-	}
-
-	wg.Wait()
-	//time.Sleep(time.Millisecond*50)
-	chB <- false
 }
 
 func saveData(s *Server, blocks ...models.Block) error {
@@ -206,26 +174,28 @@ func getTransactions(block *models.Block) []models.Transaction {
 	transactions := make([]models.Transaction, 0)
 	var opsLength int
 
-	if opsLength = len(block.Operations[3]); opsLength == 0 {
-		return nil
-	}
+	if len(block.Operations) > 2 {
+		if opsLength = len(block.Operations[3]); opsLength == 0 {
+			return nil
+		}
 
-	for i := 0; i < opsLength; i++ {
-		for j := 0; j < len(block.Operations[3][i].Contents); j++ {
-			transaction.BlockHash = block.Hash
-			transaction.Hash = block.Operations[3][i].Hash
-			transaction.Branch = block.Operations[3][i].Branch
-			transaction.Destination = block.Operations[3][i].Contents[j].Destination
-			transaction.Source = block.Operations[3][i].Contents[j].Source
-			transaction.Fee = block.Operations[3][i].Contents[j].Fee
-			transaction.Counter = block.Operations[3][i].Contents[j].Counter
-			transaction.GasLimit = block.Operations[3][i].Contents[j].GasLimit
-			transaction.Amount = block.Operations[3][i].Contents[j].Amount
-			transaction.ConsumedMilligas = block.Operations[3][i].Contents[j].Metadata.OperationResult.ConsumedMilligas
-			transaction.StorageSize = block.Operations[3][i].Contents[j].Metadata.OperationResult.StorageSize
-			transaction.Signature = block.Operations[3][i].Signature
+		for i := 0; i < opsLength; i++ {
+			for j := 0; j < len(block.Operations[3][i].Contents); j++ {
+				transaction.BlockHash = block.Hash
+				transaction.Hash = block.Operations[3][i].Hash
+				transaction.Branch = block.Operations[3][i].Branch
+				transaction.Destination = block.Operations[3][i].Contents[j].Destination
+				transaction.Source = block.Operations[3][i].Contents[j].Source
+				transaction.Fee = block.Operations[3][i].Contents[j].Fee
+				transaction.Counter = block.Operations[3][i].Contents[j].Counter
+				transaction.GasLimit = block.Operations[3][i].Contents[j].GasLimit
+				transaction.Amount = block.Operations[3][i].Contents[j].Amount
+				transaction.ConsumedMilligas = block.Operations[3][i].Contents[j].Metadata.OperationResult.ConsumedMilligas
+				transaction.StorageSize = block.Operations[3][i].Contents[j].Metadata.OperationResult.StorageSize
+				transaction.Signature = block.Operations[3][i].Signature
 
-			transactions = append(transactions, *transaction)
+				transactions = append(transactions, *transaction)
+			}
 		}
 	}
 
