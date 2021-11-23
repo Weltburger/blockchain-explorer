@@ -1,27 +1,23 @@
-.PHONY: migrate-create migrate-up migrate-down migrate-force dock-postgres-start
-
 PWD = $(shell pwd)
-ACCTPATH = $(PWD)
-MPATH = $(ACCTPATH)/cmd/migration
-PORT = 5432
-
-# Default number of migrations to execute up or down
-N = 1
-
-# Create keypair should be in your file below
+MPATH = $(PWD)/internal/auth/migrations
 
 migrate-create:
 	@echo "---Creating migration files---"
-	migrate create -ext sql -dir $(MPATH) -digits 5 -seq $(NAME)
+	migrate create -ext sql -dir $(MPATH) -digits 3 -seq $(NAME)
 
-dock-postgres-start:
-	docker run -it --rm -d --network host --name postgres_block-explorer -e POSTGRES_PASSWORD=password -e POSTGRES_USER=postgres postgres
+postgres:
+	docker run --rm --name postgres_block-explorer --network host -e POSTGRES_USER=root -e POSTGRES_PASSWORD=password -d postgres
+
+createdb:
+	docker exec -it postgres_block-explorer createdb --username=root --owner=root blockchain_explorer
+
+dropdb:
+	docker exec -it postgres_block-explorer dropdb blockchain_explorer
 
 migrate-up:
-	migrate -source file://$(MPATH) -database postgres://postgres:password@localhost:$(PORT)/postgres?sslmode=disable up $(N)
+	migrate -path $(MPATH) -database "postgresql://root:password@localhost:5432/blockchain_explorer?sslmode=disable" -verbose up
 
 migrate-down:
-	migrate -source file://$(MPATH) -database postgres://postgres:password@localhost:$(PORT)/postgres?sslmode=disable down $(N)
+	migrate -path $(MPATH) -database "postgresql://root:password@localhost:5432/blockchain_explorer?sslmode=disable" -verbose down
 
-migrate-force:
-	migrate -source file://$(MPATH) -database postgres://postgres:password@localhost:$(PORT)/postgres?sslmode=disable force $(VERSION)
+.PHONY: postgres createdb dropdb migrate-up migrate-down
