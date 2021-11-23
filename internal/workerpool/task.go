@@ -3,7 +3,6 @@ package workerpool
 import (
 	"explorer/models"
 	"fmt"
-	"sync"
 )
 
 type Task struct {
@@ -17,8 +16,7 @@ func NewTask(f func(int64) error, data int64, ch chan *models.TaskErr) *Task {
 	return &Task{f: f, Data: data, chE: ch}
 }
 
-func process(workerID int, task *Task, wg *sync.WaitGroup) {
-	defer wg.Done()
+func process(workerID int, task *Task) {
 	fmt.Printf("Worker %d processes task %v\n", workerID, task.Data)
 	task.Err = task.f(task.Data)
 	if task.Err != nil {
@@ -26,7 +24,7 @@ func process(workerID int, task *Task, wg *sync.WaitGroup) {
 			Err: task.Err,
 			ID:  task.Data,
 		}
-		fmt.Println("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	} else {
+		fmt.Printf("Worker %d completed task %v\n", workerID, task.Data)
 	}
-	fmt.Printf("Worker %d done task %v\n", workerID, task.Data)
 }

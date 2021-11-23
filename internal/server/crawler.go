@@ -8,14 +8,16 @@ import (
 	"log"
 	"strconv"
 	"sync"
+	"time"
 )
 
-func (s *Server) Crawl(startPos int64) {
-	stepSize := 500
+func (s *Server) Crawl(startPos int64, step int) {
+	stepSize := step
 	arr := make([]models.Block, 0, stepSize)
 	ch := make(chan models.Block)
 	chB := make(chan bool)
 	chC := make(chan bool)
+	chF := make(chan bool)
 	chE := make(chan *models.TaskErr)
 
 	defer func() {
@@ -23,6 +25,7 @@ func (s *Server) Crawl(startPos int64) {
 		close(chB)
 		close(chC)
 		close(chE)
+		close(chF)
 	}()
 
 	pool := workerpool.NewPool(nil, 10)
@@ -39,7 +42,6 @@ func (s *Server) Crawl(startPos int64) {
 			if block.Hash != "" {
 				pool.Mux.Lock()
 				pool.Counter++
-				fmt.Println(*block)
 				ch <- *block
 
 				if pool.Counter == stepSize {
@@ -52,7 +54,6 @@ func (s *Server) Crawl(startPos int64) {
 			}
 
 			if blockID == 0 {
-				pool.WG.Wait()
 				chC <- true
 			}
 			return nil
@@ -73,7 +74,6 @@ func (s *Server) Crawl(startPos int64) {
 					err := saveData(s, arr...)
 					arr = make([]models.Block, 0, stepSize)
 					if err != nil {
-						fmt.Println("a", err)
 						return
 					}
 				case err := <-chE:
@@ -83,15 +83,17 @@ func (s *Server) Crawl(startPos int64) {
 						pool.AddTask(task)
 					}()
 				case <- chC:
-					//time.Sleep(time.Second * 20)
-					err := saveData(s, arr...)
-					if err != nil {
-						fmt.Println("b", err)
-						return
-					}
+					go func() {
+						time.Sleep(time.Second * 30)
+						err := saveData(s, arr...)
+						if err != nil {
+							return
+						}
+						chF <- true
+					}()
+				case <- chF:
 					break ForLoop
 				default:
-					//break
 				}
 			}
 	}()

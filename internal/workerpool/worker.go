@@ -2,22 +2,19 @@ package workerpool
 
 import (
 	"fmt"
-	"sync"
 )
 
 type Worker struct {
 	ID       int
 	taskChan chan *Task
 	quit     chan bool
-	WG       *sync.WaitGroup
 }
 
-func NewWorker(channel chan *Task, ID int, wg *sync.WaitGroup) *Worker {
+func NewWorker(channel chan *Task, ID int) *Worker {
 	return &Worker{
 		ID:       ID,
 		taskChan: channel,
 		quit:     make(chan bool),
-		WG: wg,
 	}
 }
 
@@ -27,8 +24,7 @@ func (wr *Worker) StartBackground() {
 	for {
 		select {
 		case task := <-wr.taskChan:
-			wr.WG.Add(1)
-			process(wr.ID, task, wr.WG)
+			process(wr.ID, task)
 		case <-wr.quit:
 			return
 		}
