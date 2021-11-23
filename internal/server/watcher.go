@@ -4,7 +4,6 @@ import (
 	"explorer/models"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"time"
 )
@@ -13,10 +12,13 @@ func (s *Server) CheckBlocks() {
 	for {
 		block, err := getData("head")
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println(err)
 		}
 
-		saveData(s, *block)
+		err = saveData(s, *block)
+		if err != nil {
+			fmt.Println(err)
+		}
 
 		fmt.Println(*block)
 		time.Sleep(time.Second * 30)

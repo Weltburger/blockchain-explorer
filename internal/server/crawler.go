@@ -5,7 +5,6 @@ import (
 	"explorer/internal/workerpool"
 	"explorer/models"
 	"fmt"
-	"log"
 	"strconv"
 	"sync"
 	"time"
@@ -74,7 +73,7 @@ func (s *Server) Crawl(startPos int64, step int) {
 					err := saveData(s, arr...)
 					arr = make([]models.Block, 0, stepSize)
 					if err != nil {
-						return
+						fmt.Println(err)
 					}
 				case err := <-chE:
 					go func() {
@@ -87,7 +86,7 @@ func (s *Server) Crawl(startPos int64, step int) {
 						time.Sleep(time.Second * 30)
 						err := saveData(s, arr...)
 						if err != nil {
-							return
+							fmt.Println(err)
 						}
 						chF <- true
 					}()
@@ -124,12 +123,12 @@ func saveData(s *Server, blocks ...models.Block) error {
 		for _, val := range blocks {
 			err := bs.Exc(&val)
 			if err != nil {
-				log.Fatal(err)
+				fmt.Println(err)
 			}
 		}
 		err := bs.Cmt()
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println(err)
 		}
 	}(bs)
 
@@ -137,7 +136,7 @@ func saveData(s *Server, blocks ...models.Block) error {
 		defer wg.Done()
 		err := saveTransactions(s, blocks...)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println(err)
 		}
 	}()
 
