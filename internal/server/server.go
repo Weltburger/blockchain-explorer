@@ -1,41 +1,57 @@
 package server
 
 import (
+	"explorer/internal/auth"
+	authhttp "explorer/internal/auth/delivery/http"
+	authrepo "explorer/internal/auth/repository/postgres"
+	"explorer/internal/auth/usecase"
 	"explorer/internal/controller"
 	"explorer/internal/storage"
 	"explorer/models"
 	"fmt"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 type Server struct {
 	Router     *echo.Echo
 	Controller *controller.Controller
+	AuthUC     auth.UserUsecase
 }
 
 func NewServer() *Server {
+	ds, err := initDS()
+	if err != nil {
+		log.Println("error init DB connect")
+		return nil
+	}
+	userRepo := authrepo.NewUserRepository(ds.DB)
+	userUseCase := usecase.NewAuthUseCase(userRepo, "salt", []byte("pass"), time.Second*100)
+
 	server := &Server{
 		Router:     echo.New(),
 		Controller: controller.New(),
+		AuthUC:     userUseCase,
 	}
 
 	server.Router.Use(middleware.Logger())
 	server.Router.Use(middleware.Recover())
 
-	apiGroup := server.Router.Group("/api/v1")
+	authhttp.RegisterEndpoints(server.Router, server.AuthUC)
+	authMiddleware := authhttp.NewAuthMiddleware(server.AuthUC)
+	apiGroup := server.Router.Group("/api/v1", authMiddleware)
 
 	apiGroup.GET("/blocks", server.Controller.BlockController().GetBlocks)
 	apiGroup.GET("/block/:block", server.Controller.BlockController().GetBlock)
 
 	apiGroup.GET("/transactions", server.Controller.TransactionController().GetTransactions)
-
 
 	return server
 }
@@ -58,7 +74,7 @@ func (s *Server) Crawl(startPos int64) {
 	mux := &sync.Mutex{}
 	var step int64 = 10000
 	arr := make([]*models.Block, 0, step)
-	ch := make(chan *models.Block/*, 1000*/)
+	ch := make(chan *models.Block /*, 1000*/)
 	chB := make(chan bool)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -71,7 +87,7 @@ func (s *Server) Crawl(startPos int64) {
 				mux.Lock()
 				arr = append(arr, str)
 				mux.Unlock()
-			case b := <- chB:
+			case b := <-chB:
 				if b == true {
 					fmt.Println(startPos)
 					startPos -= step
