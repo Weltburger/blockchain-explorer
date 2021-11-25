@@ -1,32 +1,28 @@
 package server
 
 import (
-	"explorer/internal/controller"
+	"database/sql"
+	"explorer/internal/explorer/delivery/http"
+	"explorer/internal/storage"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
 
 type Server struct {
-	Router     *echo.Echo
-	Controller *controller.Controller
+	Router       *echo.Echo
+	ClickhouseDB *sql.DB
 }
 
 func NewServer() *Server {
 	server := &Server{
 		Router:     echo.New(),
-		Controller: controller.New(),
+		ClickhouseDB: storage.GetDB().DB,
 	}
 
 	server.Router.Use(middleware.Logger())
 	server.Router.Use(middleware.Recover())
 
-	apiGroup := server.Router.Group("/api/v1")
-
-	apiGroup.GET("/blocks", server.Controller.BlockController().GetBlocks)
-	apiGroup.GET("/block/:block", server.Controller.BlockController().GetBlock)
-
-	apiGroup.GET("/transactions", server.Controller.TransactionController().GetTransactions)
-
+	http.RegisterEndpoints(server.Router, server.ClickhouseDB)
 
 	return server
 }

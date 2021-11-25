@@ -10,24 +10,6 @@ type Database struct {
 	DB *sql.DB
 }
 
-func (database *Database) BlockStorage() *BlockStorage {
-	//trx, _ := database.DB.Begin()
-	return &BlockStorage{
-		database: database,
-		/*Tx:       trx,
-		Stmt:     PrepareBlock(trx),*/
-	}
-}
-
-func (database *Database) TransactionStorage() *TransactionStorage {
-	//trx, _ := database.DB.Begin()
-	return &TransactionStorage{
-		database: database,
-		/*Tx:       trx,
-		Stmt:     PrepareTransaction(trx),*/
-	}
-}
-
 func GetDB() *Database {
 	DB := startDB()
 
@@ -44,8 +26,4 @@ func startDB() *sql.DB {
 	}
 
 	return db
-}
-
-func (database *Database) CloseDB() {
-	database.DB.Close()
 }

@@ -1,8 +1,8 @@
 package server
 
 import (
-	"explorer/internal/storage"
-	"explorer/internal/workerpool"
+	"explorer/internal/explorer/repository/clickhouse"
+	"explorer/internal/server/workerpool"
 	"explorer/models"
 	"log"
 	"strconv"
@@ -111,28 +111,29 @@ func (s *Server) Crawl(startPos int64, step int) {
 
 func saveData(s *Server, blocks ...models.Block) error {
 	wg := &sync.WaitGroup{}
-	bs := s.Controller.DB.BlockStorage()
-	err := bs.PrepareBlockTx()
+
+	br := clickhouse.NewBlockRepository(s.ClickhouseDB)
+	err := br.PrepareBlockTx()
 	if err != nil {
 		return err
 	}
 
-	defer bs.Tx.Rollback()
+	defer br.Tx.Rollback()
 
 	wg.Add(2)
-	go func(bs *storage.BlockStorage) {
+	go func(br *clickhouse.BlockRepository) {
 		defer wg.Done()
 		for _, val := range blocks {
-			err := bs.Exc(&val)
+			err := br.Exc(&val)
 			if err != nil {
 				log.Println(err)
 			}
 		}
-		err := bs.Cmt()
+		err := br.Cmt()
 		if err != nil {
 			log.Println(err)
 		}
-	}(bs)
+	}(br)
 
 	go func() {
 		defer wg.Done()
@@ -148,25 +149,25 @@ func saveData(s *Server, blocks ...models.Block) error {
 }
 
 func saveTransactions(s *Server, blocks ...models.Block) error {
-	transactionStorage := s.Controller.DB.TransactionStorage()
-	err := transactionStorage.PrepareTransactionTx()
+	trRepo := clickhouse.NewTransRepository(s.ClickhouseDB)
+	err := trRepo.PrepareTransactionTx()
 	if err != nil {
 		return err
 	}
 
-	defer transactionStorage.Tx.Rollback()
+	defer trRepo.Tx.Rollback()
 
 	for _, block := range blocks {
 		transactions := getTransactions(&block)
 		for _, tr := range transactions {
-			err := transactionStorage.SaveTransaction(&tr)
+			err := trRepo.SaveTransaction(&tr)
 			if err != nil {
 				return err
 			}
 		}
 	}
 
-	err = transactionStorage.Cmt()
+	err = trRepo.Cmt()
 	if err != nil {
 		return err
 	}

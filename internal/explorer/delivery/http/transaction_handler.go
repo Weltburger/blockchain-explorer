@@ -1,17 +1,23 @@
-package controller
+package http
 
 import (
-	"context"
+	"explorer/internal/explorer"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"strconv"
 )
 
-type TransactionController struct {
-	controller *Controller
+type TransHandler struct {
+	transUseCase explorer.TransUseCase
 }
 
-func (transactionController *TransactionController) GetTransactions(c echo.Context) error {
+func NewTransHandler(transUseCase explorer.TransUseCase) *TransHandler {
+	return &TransHandler{
+		transUseCase: transUseCase,
+	}
+}
+
+func (h *TransHandler) GetTransactions(c echo.Context) error {
 	blk := c.QueryParam("block")
 	acc := c.QueryParam("account")
 	hash := c.QueryParam("hash")
@@ -25,8 +31,7 @@ func (transactionController *TransactionController) GetTransactions(c echo.Conte
 		offset = 0
 	}
 
-	ctx := context.Background()
-	transactions, err := transactionController.controller.DB.TransactionStorage().GetTransactions(ctx, offset, limit, blk, hash, acc)
+	transactions, err := h.transUseCase.GetTransactions(c.Request().Context(), offset, limit, blk, hash, acc)
 	if err != nil {
 		return c.String(http.StatusNotFound, err.Error())
 	}

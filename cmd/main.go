@@ -6,7 +6,7 @@ import (
 
 func main() {
 	serv := server.NewServer()
-	defer serv.Controller.DB.CloseDB()
+	defer serv.ClickhouseDB.Close()
 	go serv.CheckBlocks()
 	go serv.Crawl(678500, 500)
 	serv.Router.Logger.Fatal(serv.Router.Start(":1323"))

@@ -1,22 +1,28 @@
-package storage
+package clickhouse
 
 import (
 	"context"
 	"database/sql"
+	"explorer/internal/apperrors"
 	"explorer/models"
 	"fmt"
 	sq "github.com/Masterminds/squirrel"
-	"log"
 )
 
-type TransactionStorage struct {
-	database *Database
+type TransactionRepository struct {
+	DB       *sql.DB
 	Tx       *sql.Tx
 	Stmt     *sql.Stmt
 }
 
-func (transactionStorage *TransactionStorage) PrepareTransactionTx() error {
-	trx, err := transactionStorage.database.DB.Begin()
+func NewTransRepository(db *sql.DB) *TransactionRepository {
+	return &TransactionRepository{
+		DB: db,
+	}
+}
+
+func (t *TransactionRepository) PrepareTransactionTx() error {
+	trx, err := t.DB.Begin()
 	if err != nil {
 		return err
 	}
@@ -43,13 +49,13 @@ func (transactionStorage *TransactionStorage) PrepareTransactionTx() error {
 		return err
 	}
 
-	transactionStorage.Stmt, transactionStorage.Tx = st, trx
+	t.Stmt, t.Tx = st, trx
 
 	return nil
 }
 
-func (transactionStorage *TransactionStorage) Exc(data *models.Transaction) error {
-	if _, err := transactionStorage.Stmt.Exec(
+func (t *TransactionRepository) Exc(data *models.Transaction) error {
+	if _, err := t.Stmt.Exec(
 		data.BlockHash,
 		data.Hash,
 		data.Branch,
@@ -69,16 +75,16 @@ func (transactionStorage *TransactionStorage) Exc(data *models.Transaction) erro
 	return nil
 }
 
-func (transactionStorage *TransactionStorage) Cmt() error {
-	if err := transactionStorage.Tx.Commit(); err != nil {
+func (t *TransactionRepository) Cmt() error {
+	if err := t.Tx.Commit(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (transactionStorage *TransactionStorage) SaveTransaction(transaction *models.Transaction) error {
-	err := transactionStorage.Exc(transaction)
+func (t *TransactionRepository) SaveTransaction(transaction *models.Transaction) error {
+	err := t.Exc(transaction)
 	if err != nil {
 		return err
 	}
@@ -86,7 +92,7 @@ func (transactionStorage *TransactionStorage) SaveTransaction(transaction *model
 	return nil
 }
 
-func (transactionStorage *TransactionStorage) GetTransactions(ctx context.Context,offset, limit int, blk, hash, acc string) ([]models.Transaction, error) {
+func (t *TransactionRepository) GetTransactions(ctx context.Context,offset, limit int, blk, hash, acc string) ([]models.Transaction, error) {
 	if blk != "" {
 		blk = fmt.Sprintf("block_hash='%s'", blk)
 	}
@@ -97,16 +103,16 @@ func (transactionStorage *TransactionStorage) GetTransactions(ctx context.Contex
 		acc = fmt.Sprintf("(source='%s' OR destination='%s')", acc, acc)
 	}
 	query, _, err := sq.Select("block_hash",
-								 "hash",
-								 "branch",
-								 "source",
-								 "destination",
-								 "fee, counter",
-								 "gas_limit",
-								 "amount",
-								 "consumed_milligas",
-								 "storage_size",
-								 "signature").
+		"hash",
+		"branch",
+		"source",
+		"destination",
+		"fee, counter",
+		"gas_limit",
+		"amount",
+		"consumed_milligas",
+		"storage_size",
+		"signature").
 		From("transactions").
 		Where(blk).
 		Where(hash).
@@ -114,10 +120,10 @@ func (transactionStorage *TransactionStorage) GetTransactions(ctx context.Contex
 		Limit(uint64(limit)).
 		Offset(uint64(offset)).ToSql()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	resp, err := transactionStorage.database.DB.QueryContext(ctx, query)
+	resp, err := t.DB.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +145,7 @@ func (transactionStorage *TransactionStorage) GetTransactions(ctx context.Contex
 			&transaction.StorageSize,
 			&transaction.Signature)
 		if err != nil {
-			return nil, err
+			return nil, apperrors.NewNotFound("clickhouse", "such transactions was")
 		}
 
 		transactions = append(transactions, *transaction)
