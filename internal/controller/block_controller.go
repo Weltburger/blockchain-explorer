@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"net/http"
@@ -14,9 +15,10 @@ type BlockController struct {
 func (blockController *BlockController) GetBlock(c echo.Context) error {
 	blk := c.Param("block")
 
-	block, err := blockController.controller.DB.BlockStorage().GetBlock(blk)
+	ctx := context.Background()
+	block, err := blockController.controller.DB.BlockStorage().GetBlock(ctx, blk)
 	if err != nil {
-		return err
+		return c.String(http.StatusNotFound, err.Error())
 	}
 
 	fmt.Println(block)
@@ -34,9 +36,10 @@ func (blockController *BlockController) GetBlocks(c echo.Context) error {
 		offset = 0
 	}
 
-	blocks, err := blockController.controller.DB.BlockStorage().GetBlocks(offset, limit)
+	ctx := context.Background()
+	blocks, err := blockController.controller.DB.BlockStorage().GetBlocks(ctx, offset, limit)
 	if err != nil {
-		return err
+		return c.String(http.StatusNotFound, err.Error())
 	}
 
 	return c.JSON(http.StatusOK, blocks)

@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"strconv"
@@ -24,9 +25,10 @@ func (transactionController *TransactionController) GetTransactions(c echo.Conte
 		offset = 0
 	}
 
-	transactions, err := transactionController.controller.DB.TransactionStorage().GetTransactions(offset, limit, blk, hash, acc)
+	ctx := context.Background()
+	transactions, err := transactionController.controller.DB.TransactionStorage().GetTransactions(ctx, offset, limit, blk, hash, acc)
 	if err != nil {
-		return err
+		return c.String(http.StatusNotFound, err.Error())
 	}
 
 	return c.JSON(http.StatusOK, transactions)

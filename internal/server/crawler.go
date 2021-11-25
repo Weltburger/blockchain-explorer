@@ -4,7 +4,7 @@ import (
 	"explorer/internal/storage"
 	"explorer/internal/workerpool"
 	"explorer/models"
-	"fmt"
+	"log"
 	"strconv"
 	"sync"
 	"time"
@@ -71,13 +71,13 @@ func (s *Server) Crawl(startPos int64, step int) {
 					arr = append(arr, str)
 				case <- chB:
 					err := saveData(s, arr...)
-					arr = make([]models.Block, 0, stepSize)
 					if err != nil {
-						fmt.Println(err)
+						log.Println(err)
 					}
+					arr = make([]models.Block, 0, stepSize)
 				case err := <-chE:
 					go func() {
-						fmt.Println(err)
+						log.Println(err.Err)
 						task := workerpool.NewTask(f, err.ID, chE)
 						pool.AddTask(task)
 					}()
@@ -86,7 +86,7 @@ func (s *Server) Crawl(startPos int64, step int) {
 						time.Sleep(time.Second * 30)
 						err := saveData(s, arr...)
 						if err != nil {
-							fmt.Println(err)
+							log.Println(err)
 						}
 						chF <- true
 					}()
@@ -117,18 +117,20 @@ func saveData(s *Server, blocks ...models.Block) error {
 		return err
 	}
 
+	defer bs.Tx.Rollback()
+
 	wg.Add(2)
 	go func(bs *storage.BlockStorage) {
 		defer wg.Done()
 		for _, val := range blocks {
 			err := bs.Exc(&val)
 			if err != nil {
-				fmt.Println(err)
+				log.Println(err)
 			}
 		}
 		err := bs.Cmt()
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 		}
 	}(bs)
 
@@ -136,7 +138,7 @@ func saveData(s *Server, blocks ...models.Block) error {
 		defer wg.Done()
 		err := saveTransactions(s, blocks...)
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 		}
 	}()
 
@@ -152,6 +154,7 @@ func saveTransactions(s *Server, blocks ...models.Block) error {
 		return err
 	}
 
+	defer transactionStorage.Tx.Rollback()
 
 	for _, block := range blocks {
 		transactions := getTransactions(&block)

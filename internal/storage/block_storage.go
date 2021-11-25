@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"explorer/models"
 	"strings"
@@ -41,6 +42,7 @@ func (blockStorage *BlockStorage) PrepareBlockTx() error {
 			?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 		)`)
 	if err != nil {
+		trx.Rollback()
 		return err
 	}
 
@@ -77,8 +79,6 @@ func (blockStorage *BlockStorage) Exc(data *models.Block) error {
 		data.Metadata.LevelInfo.CyclePosition,
 		data.Metadata.ConsumedGas,
 	); err != nil {
-		_ = blockStorage.Stmt.Close()
-		_ = blockStorage.Tx.Rollback()
 		return err
 	}
 
@@ -87,15 +87,14 @@ func (blockStorage *BlockStorage) Exc(data *models.Block) error {
 
 func (blockStorage *BlockStorage) Cmt() error {
 	if err := blockStorage.Tx.Commit(); err != nil {
-		_ = blockStorage.Tx.Rollback()
 		return err
 	}
 
 	return nil
 }
 
-func (blockStorage *BlockStorage) GetBlock(blk string) (*models.Block, error) {
-	resp, err := blockStorage.database.DB.Query(`
+func (blockStorage *BlockStorage) GetBlock(ctx context.Context, blk string) (*models.Block, error) {
+	resp, err := blockStorage.database.DB.QueryContext(ctx, `
 		SELECT protocol,
 			   chain_id,
 			   hash,
@@ -162,7 +161,7 @@ func (blockStorage *BlockStorage) SaveBlock(block *models.Block) error {
 	return nil
 }
 
-func (blockStorage *BlockStorage) GetBlocks(offset, limit int) ([]models.Block, error) {
+func (blockStorage *BlockStorage) GetBlocks(ctx context.Context, offset, limit int) ([]models.Block, error) {
 	if offset < 0 {
 		offset = 0
 	}
@@ -170,7 +169,7 @@ func (blockStorage *BlockStorage) GetBlocks(offset, limit int) ([]models.Block, 
 		limit = 1
 	}
 
-	resp, err := blockStorage.database.DB.Query(`
+	resp, err := blockStorage.database.DB.QueryContext(ctx,`
 		SELECT protocol,
 			   chain_id,
 			   hash,

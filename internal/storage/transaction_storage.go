@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"explorer/models"
 	"fmt"
@@ -38,6 +39,7 @@ func (transactionStorage *TransactionStorage) PrepareTransactionTx() error {
 			?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 		)`)
 	if err != nil {
+		trx.Rollback()
 		return err
 	}
 
@@ -61,8 +63,6 @@ func (transactionStorage *TransactionStorage) Exc(data *models.Transaction) erro
 		data.StorageSize,
 		data.Signature,
 	); err != nil {
-		_ = transactionStorage.Stmt.Close()
-		_ = transactionStorage.Tx.Rollback()
 		return err
 	}
 
@@ -71,7 +71,6 @@ func (transactionStorage *TransactionStorage) Exc(data *models.Transaction) erro
 
 func (transactionStorage *TransactionStorage) Cmt() error {
 	if err := transactionStorage.Tx.Commit(); err != nil {
-		_ = transactionStorage.Tx.Rollback()
 		return err
 	}
 
@@ -87,7 +86,7 @@ func (transactionStorage *TransactionStorage) SaveTransaction(transaction *model
 	return nil
 }
 
-func (transactionStorage *TransactionStorage) GetTransactions(offset, limit int, blk, hash, acc string) ([]models.Transaction, error) {
+func (transactionStorage *TransactionStorage) GetTransactions(ctx context.Context,offset, limit int, blk, hash, acc string) ([]models.Transaction, error) {
 	if blk != "" {
 		blk = fmt.Sprintf("block_hash='%s'", blk)
 	}
@@ -118,7 +117,7 @@ func (transactionStorage *TransactionStorage) GetTransactions(offset, limit int,
 		log.Fatal(err)
 	}
 
-	resp, err := transactionStorage.database.DB.Query(query)
+	resp, err := transactionStorage.database.DB.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
