@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"crypto/sha1"
 	"fmt"
 	"time"
 
@@ -11,67 +10,86 @@ import (
 	"explorer/models"
 
 	"github.com/dgrijalva/jwt-go/v4"
+	"github.com/google/uuid"
 )
 
+type tokenUser struct {
+	ID    uuid.UUID `json:"uid"`
+	Email string    `json:"email"`
+}
 type AuthClaims struct {
 	jwt.StandardClaims
-	User *models.User `json:"user"`
+	User tokenUser `json:"user"`
 }
 
 type AuthUseCase struct {
 	userRepo       auth.UserRepo
-	hashSalt       string
 	signingKey     []byte
 	expireDuration time.Duration
 }
 
 func NewAuthUseCase(
 	userRepo auth.UserRepo,
-	hashSalt string,
 	signingKey []byte,
 	tokenTTLSeconds time.Duration) *AuthUseCase {
 	return &AuthUseCase{
 		userRepo:       userRepo,
-		hashSalt:       hashSalt,
 		signingKey:     signingKey,
 		expireDuration: time.Second * tokenTTLSeconds,
 	}
 }
 
 func (a *AuthUseCase) SignUp(ctx context.Context, username, password string) error {
-	pwd := sha1.New()
-	pwd.Write([]byte(password))
-	pwd.Write([]byte(a.hashSalt))
+	pwd, err := encryptPwd(password)
+	if err != nil {
+		return err
+	}
 
 	user := &models.User{
-		Email:    username,
-		Password: fmt.Sprintf("%x", pwd.Sum(nil)),
+		ID:        uuid.New(),
+		Email:     username,
+		Password:  pwd,
+		CreatedAt: time.Now(),
 	}
 
 	return a.userRepo.CreateUser(ctx, user)
 }
 
-func (a *AuthUseCase) SignIn(ctx context.Context, username, password string) (string, error) {
-	pwd := sha1.New()
-	pwd.Write([]byte(password))
-	pwd.Write([]byte(a.hashSalt))
-	password = fmt.Sprintf("%x", pwd.Sum(nil))
-
-	user, err := a.userRepo.GetByEmail(ctx, username)
+func (a *AuthUseCase) SignIn(ctx context.Context, email, password string) (string, error) {
+	user, err := a.userRepo.GetByEmail(ctx, email)
 	if err != nil {
 		return "", apperrors.NewNotFound("username", user.Email)
 	}
 
+	// verify password
+	match, err := comparePwd(user.Password, password)
+	if err != nil {
+		return "", apperrors.NewInternal()
+	}
+
+	if !match {
+		return "", apperrors.NewAuthorization("Invalid email and password combination")
+	}
+
+	expiresTime := time.Now().Add(a.expireDuration)
 	claims := AuthClaims{
-		User: user,
+		User: tokenUser{
+			ID:    user.ID,
+			Email: user.Email,
+		},
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: jwt.At(time.Now().Add(a.expireDuration)),
+			IssuedAt:  jwt.At(time.Now()),
+			ExpiresAt: jwt.At(expiresTime),
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signedToken, err := token.SignedString(a.signingKey)
+	if err != nil {
+		return "", err
+	}
 
-	return token.SignedString(a.signingKey)
+	return signedToken, nil
 }
 
 func (a *AuthUseCase) ParseToken(ctx context.Context, accessToken string) (*models.User, error) {
@@ -87,7 +105,10 @@ func (a *AuthUseCase) ParseToken(ctx context.Context, accessToken string) (*mode
 	}
 
 	if claims, ok := token.Claims.(*AuthClaims); ok && token.Valid {
-		return claims.User, nil
+		return &models.User{
+			ID:    claims.User.ID,
+			Email: claims.User.Email,
+		}, nil
 	}
 
 	return nil, apperrors.NewAuthorization("Invalid token")

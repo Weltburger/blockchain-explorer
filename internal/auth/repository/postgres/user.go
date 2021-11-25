@@ -28,9 +28,9 @@ func NewUserRepository(db *sqlx.DB) auth.UserRepo {
 
 // Create reaches out to database SQLX api
 func (r *PGUserRepository) CreateUser(ctx context.Context, u *models.User) error {
-	query := "INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *"
+	query := "INSERT INTO users (id, email, password, created_at) VALUES ($1, $2, $3, $4) RETURNING *"
 
-	if _, err := r.DB.ExecContext(ctx, query, u.Email, u.Password); err != nil {
+	if _, err := r.DB.ExecContext(ctx, query, u.ID, u.Email, u.Password, u.CreatedAt); err != nil {
 		// check unique constraint
 		if err, ok := err.(*pq.Error); ok && err.Code.Name() == "unique_violation" {
 			log.Printf("Could not create a user with email: %v. Reason: %v\n", u.Email, err.Code.Name())

@@ -17,7 +17,8 @@ func (controller *Controller) TransactionController() *TransactionController {
 }
 
 func New() *Controller {
-	db := storage.GetDB()
+	// db := storage.GetDB()
+	db := &storage.Database{}
 
 	return &Controller{DB: db}
 }

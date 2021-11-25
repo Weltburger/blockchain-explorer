@@ -2,9 +2,6 @@ package server
 
 import (
 	"explorer/internal/auth"
-	authhttp "explorer/internal/auth/delivery/http"
-	authrepo "explorer/internal/auth/repository/postgres"
-	"explorer/internal/auth/usecase"
 	"explorer/internal/controller"
 	"explorer/internal/storage"
 	"explorer/models"
@@ -17,7 +14,6 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 )
 
 type Server struct {
@@ -32,21 +28,10 @@ func NewServer() *Server {
 		log.Println("error init DB connect")
 		return nil
 	}
-	userRepo := authrepo.NewUserRepository(ds.DB)
-	userUseCase := usecase.NewAuthUseCase(userRepo, "salt", []byte("pass"), time.Second*100)
 
-	server := &Server{
-		Router:     echo.New(),
-		Controller: controller.New(),
-		AuthUC:     userUseCase,
-	}
+	server := inject(ds)
 
-	server.Router.Use(middleware.Logger())
-	server.Router.Use(middleware.Recover())
-
-	authhttp.RegisterEndpoints(server.Router, server.AuthUC)
-	authMiddleware := authhttp.NewAuthMiddleware(server.AuthUC)
-	apiGroup := server.Router.Group("/api/v1", authMiddleware)
+	apiGroup := server.Router.Group("/api/v1")
 
 	apiGroup.GET("/blocks", server.Controller.BlockController().GetBlocks)
 	apiGroup.GET("/block/:block", server.Controller.BlockController().GetBlock)
