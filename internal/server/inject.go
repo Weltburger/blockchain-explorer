@@ -24,6 +24,7 @@ func inject(d *dataSources) *Server {
 
 	// initialize Echo router
 	router := echo.New()
+	router.Debug = true
 
 	// use default middleware
 	router.Use(middleware.Logger())
@@ -33,9 +34,15 @@ func inject(d *dataSources) *Server {
 	// create input fields validator
 	validate := validator.New()
 
+	api := router.Group("/api")
+
 	// register auth endpoints
-	authhttp.RegisterEndpoints(router, userUseCase, validate)
-	// authMiddleware := authhttp.NewAuthMiddleware(server.AuthUC)
+	authhttp.RegisterEndpoints(api, userUseCase, validate)
+	api.Use(authhttp.Authorization(userUseCase))
+
+	// api.GET("/test", func(c echo.Context) error {
+	// 	return c.JSON(http.StatusOK, "Hello, World!")
+	// })
 
 	// create server struct
 	server := &Server{

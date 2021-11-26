@@ -7,7 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func RegisterEndpoints(router *echo.Echo, uc auth.UserUsecase, v *validator.Validate) {
+func RegisterEndpoints(router *echo.Group, uc auth.UserUsecase, v *validator.Validate) {
 	h := NewHandler(uc, v)
 
 	authEndpoints := router.Group("/auth")
@@ -15,4 +15,5 @@ func RegisterEndpoints(router *echo.Echo, uc auth.UserUsecase, v *validator.Vali
 		authEndpoints.POST("/sign-up", h.SignUp)
 		authEndpoints.POST("/sign-in", h.SignIn)
 	}
+
 }

@@ -1,7 +1,6 @@
 package http
 
 import (
-	"errors"
 	"explorer/internal/auth"
 	"explorer/internal/auth/apperrors"
 	"net/http"
@@ -22,32 +21,39 @@ func NewAuthMiddleware(usecase auth.UserUsecase) echo.HandlerFunc {
 
 func (m *AuthMiddleware) Handle(ctx echo.Context) error {
 
-	err := errors.New("middleware")
-
-	authHeader := ctx.Get("Authorization")
+	authHeader := ctx.Request().Header.Get("Authorization")
 	if authHeader == "" {
-		ctx.JSON(http.StatusUnauthorized, apperrors.NewAuthorization("error"))
-		return err
+		errJSON := ctx.JSON(http.StatusUnauthorized, apperrors.NewAuthorization("error"))
+		return errJSON
 	}
 
-	headerParts := strings.Split(authHeader.(string), " ")
+	headerParts := strings.Split(authHeader, " ")
 	if len(headerParts) != 2 {
-		ctx.JSON(http.StatusUnauthorized, apperrors.NewAuthorization("error token format"))
-		return err
+		errJSON := ctx.JSON(http.StatusUnauthorized, apperrors.NewAuthorization("error token format"))
+		return errJSON
 	}
-
 	if headerParts[0] != "Bearer" {
-		ctx.JSON(http.StatusUnauthorized, apperrors.NewAuthorization("didn't find bearer"))
-		return err
+		errJSON := ctx.JSON(http.StatusUnauthorized, apperrors.NewAuthorization("didn't find bearer"))
+		return errJSON
 	}
 
 	user, err := m.usecase.ParseToken(ctx.Request().Context(), headerParts[1])
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, apperrors.NewAuthorization("didn't find bearer"))
-		return err
+		errJSON := ctx.JSON(http.StatusUnauthorized, apperrors.NewAuthorization(err.Error()))
+		return errJSON
 	}
 
-	ctx.Set(auth.CtxUserKey, user)
+	ctx.Response().Header().Set(auth.CtxUserKey, user.Email)
 
 	return nil
+}
+
+// authorization is the authorization middleware for users.
+// It checks the access_token in the Authorization header or the access_token query parameter
+// On success sets "me" = *User (current logged user) and "accessData" = current access data
+// into the context. Sets even the scopes variable, the sorted slice of scopes in accessData
+func Authorization(userUse auth.UserUsecase) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return NewAuthMiddleware(userUse)
+	}
 }
