@@ -6,6 +6,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/spf13/viper"
 )
 
 type dataSources struct {
@@ -16,14 +17,14 @@ type dataSources struct {
 func initDS() (*dataSources, error) {
 	log.Printf("Initializing data sources\n")
 
-	pgHost := "localhost"
-	pgPort := "5432"
-	pgUser := "root"
-	pgPassword := "password"
-	pgDB := "blockchain_explorer"
-	pgSSL := "disable"
+	pgHost := viper.GetString("postgres.pg_host")
+	pgPort := viper.GetInt("postgres.pg_port")
+	pgUser := viper.GetString("postgres.pg_user")
+	pgPassword := viper.GetString("postgres.pg_pass")
+	pgDB := viper.GetString("postgres.pg_db")
+	pgSSL := viper.GetString("postgres.pg_ssl")
 
-	pgConnString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s", pgHost, pgPort, pgUser, pgPassword, pgDB, pgSSL)
+	pgConnString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s", pgHost, pgPort, pgUser, pgPassword, pgDB, pgSSL)
 
 	log.Printf("Connecting to Postgresql\n")
 	db, err := sqlx.Open("postgres", pgConnString)

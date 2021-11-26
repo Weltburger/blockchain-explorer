@@ -1,0 +1,13 @@
+address: ":1323"
+
+auth:
+  signing_key: "strongPassword"
+  token_ttl: 86400
+
+postgres:
+  pg_host: "localhost"
+  pg_port: 5432
+  pg_user: "root"
+  pg_pass: "password"
+  pg_db: "blockchain_explorer"
+  pg_ssl: "disable"

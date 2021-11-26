@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	echolog "github.com/labstack/gommon/log"
+	"github.com/spf13/viper"
 )
 
 func inject(d *dataSources) *Server {
@@ -20,7 +21,7 @@ func inject(d *dataSources) *Server {
 	userRepo := authrepo.NewUserRepository(d.DB)
 
 	// usecase(service) layer
-	userUseCase := usecase.NewAuthUseCase(userRepo, []byte("password"), 600)
+	userUseCase := usecase.NewAuthUseCase(userRepo, []byte(viper.GetString("auth.signing_key")), viper.GetDuration("auth.token_ttl"))
 
 	// initialize Echo router
 	router := echo.New()

@@ -13,6 +13,7 @@ require (
 	github.com/lib/pq v1.10.4
 	github.com/mailru/go-clickhouse v1.7.0
 	github.com/mattn/go-colorable v0.1.11 // indirect
+	github.com/spf13/viper v1.9.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/net v0.0.0-20211029224645-99673261e6eb // indirect
 	golang.org/x/sys v0.0.0-20211031064116-611d5d643895 // indirect
