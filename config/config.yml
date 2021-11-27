@@ -7,7 +7,7 @@ auth:
 postgres:
   pg_host: "localhost"
   pg_port: 5432
-  pg_user: "root"
-  pg_pass: "password"
+  pg_user: "postgres"
+  pg_pass: "1234"
   pg_db: "blockchain_explorer"
   pg_ssl: "disable"
