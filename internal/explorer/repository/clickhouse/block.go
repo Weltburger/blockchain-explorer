@@ -1,19 +1,34 @@
-package storage
+package clickhouse
 
 import (
+	"context"
 	"database/sql"
+	"explorer/internal/apperrors"
 	"explorer/models"
-	"log"
 	"strings"
 	"time"
 )
 
-type BlockStorage struct {
-	database *Database
+type BlockRepository struct {
+	DB       *sql.DB
+	Tx       *sql.Tx
+	Stmt     *sql.Stmt
 }
 
-func (blockStorage *BlockStorage) Prepare() *sql.Stmt {
-	st, err := blockStorage.database.BlockTx.Prepare(`
+func NewBlockRepository(db *sql.DB) *BlockRepository {
+	return &BlockRepository{
+		DB: db,
+	}
+}
+
+
+func (b *BlockRepository) PrepareBlockTx() error {
+	trx, err := b.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	st, err := trx.Prepare(`
 		INSERT INTO blocks.block (
 			protocol,
 			chain_id,
@@ -34,15 +49,17 @@ func (blockStorage *BlockStorage) Prepare() *sql.Stmt {
 		) VALUES (
 			?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 		)`)
-
 	if err != nil {
-		log.Fatal(err)
+		trx.Rollback()
+		return err
 	}
 
-	return st
+	b.Stmt, b.Tx = st, trx
+
+	return nil
 }
 
-func (blockStorage *BlockStorage) Exc(data *models.Block) error {
+func (b *BlockRepository) Exc(data *models.Block) error {
 	layout := "2006-01-02T15:04:05Z"
 	timeStr := data.Header.Timestamp
 	t, err := time.Parse(layout, timeStr)
@@ -52,9 +69,7 @@ func (blockStorage *BlockStorage) Exc(data *models.Block) error {
 
 	fitness := strings.Join(data.Header.Fitness, ",")
 
-
-
-	if _, err := blockStorage.database.BlockStmt.Exec(
+	if _, err := b.Stmt.Exec(
 		data.Protocol,
 		data.ChainID,
 		data.Hash,
@@ -78,28 +93,41 @@ func (blockStorage *BlockStorage) Exc(data *models.Block) error {
 	return nil
 }
 
-func (blockStorage *BlockStorage) Cmt() error {
-	if err := blockStorage.database.BlockTx.Commit(); err != nil {
+func (b *BlockRepository) Cmt() error {
+	if err := b.Tx.Commit(); err != nil {
 		return err
 	}
-
-	blockStorage.database.BlockTx, _ = blockStorage.database.DB.Begin()
-	blockStorage.database.BlockStmt = blockStorage.Prepare()
 
 	return nil
 }
 
-func (blockStorage *BlockStorage) GetBlock(blk string) (*models.Block, error) {
-	resp, err := blockStorage.database.DB.Query(`
-		SELECT * FROM block WHERE hash = ?
+func (b *BlockRepository) GetBlock(ctx context.Context, blk string) (*models.Block, error) {
+	resp, err := b.DB.QueryContext(ctx, `
+		SELECT protocol,
+			   chain_id,
+			   hash,
+			   baker_fees,
+			   "level",
+			   predecessor,
+			   priority,
+			   "timestamp",
+			   validation_pass,
+			   validation_hash,
+			   fitness,
+			   signature,
+			   baker,
+			   cycle_num,
+			   cycle_position,
+			   consumed_gas 
+		FROM block WHERE hash = ?
 	`, blk)
 	if err != nil {
 		return nil, err
 	}
 
 	var tm time.Time
-	block := new(models.Block)
 	var fitness string
+	block := new(models.Block)
 
 	resp.Next()
 	err = resp.Scan(&block.Protocol,
@@ -119,7 +147,7 @@ func (blockStorage *BlockStorage) GetBlock(blk string) (*models.Block, error) {
 		&block.Metadata.LevelInfo.CyclePosition,
 		&block.Metadata.ConsumedGas)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.NewNotFound("clickhouse", "such block was")
 	}
 
 	block.Header.Timestamp = tm.String()
@@ -128,12 +156,12 @@ func (blockStorage *BlockStorage) GetBlock(blk string) (*models.Block, error) {
 	return block, nil
 }
 
-func (blockStorage *BlockStorage) SaveBlock(block *models.Block) error {
-	err := blockStorage.Exc(block)
+func (b *BlockRepository) SaveBlock(block *models.Block) error {
+	err := b.Exc(block)
 	if err != nil {
 		return err
 	}
-	err = blockStorage.Cmt()
+	err = b.Cmt()
 	if err != nil {
 		return err
 	}
@@ -141,7 +169,7 @@ func (blockStorage *BlockStorage) SaveBlock(block *models.Block) error {
 	return nil
 }
 
-func (blockStorage *BlockStorage) GetBlocks(offset, limit int) ([]*models.Block, error) {
+func (b *BlockRepository) GetBlocks(ctx context.Context, offset, limit int) ([]models.Block, error) {
 	if offset < 0 {
 		offset = 0
 	}
@@ -149,8 +177,24 @@ func (blockStorage *BlockStorage) GetBlocks(offset, limit int) ([]*models.Block,
 		limit = 1
 	}
 
-	resp, err := blockStorage.database.DB.Query(`
-		SELECT * FROM block 
+	resp, err := b.DB.QueryContext(ctx,`
+		SELECT protocol,
+			   chain_id,
+			   hash,
+			   baker_fees,
+			   "level",
+			   predecessor,
+			   priority,
+			   "timestamp",
+			   validation_pass,
+			   validation_hash,
+			   fitness,
+			   signature,
+			   baker,
+			   cycle_num,
+			   cycle_position,
+			   consumed_gas 
+		FROM block 
 		LIMIT ?, ?
 	`, offset, limit)
 	if err != nil {
@@ -158,13 +202,13 @@ func (blockStorage *BlockStorage) GetBlocks(offset, limit int) ([]*models.Block,
 	}
 
 	var (
-		tm time.Time
+		tm      time.Time
 		fitness string
-		blocks []*models.Block
+		blocks  []models.Block
 	)
 
+	block := new(models.Block)
 	for resp.Next() {
-		block := new(models.Block)
 		err = resp.Scan(&block.Protocol,
 			&block.ChainID,
 			&block.Hash,
@@ -182,13 +226,13 @@ func (blockStorage *BlockStorage) GetBlocks(offset, limit int) ([]*models.Block,
 			&block.Metadata.LevelInfo.CyclePosition,
 			&block.Metadata.ConsumedGas)
 		if err != nil {
-			return nil, err
+			return nil, apperrors.NewNotFound("clickhouse", "such blocks was")
 		}
 
 		block.Header.Timestamp = tm.String()
 		block.Header.Fitness = strings.Split(fitness, ",")
 
-		blocks = append(blocks, block)
+		blocks = append(blocks, *block)
 	}
 
 	return blocks, nil

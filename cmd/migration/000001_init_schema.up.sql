@@ -35,5 +35,4 @@ CREATE TABLE IF NOT EXISTS blocks.transactions (
     `storage_size`      String,
     `signature`         String
 ) ENGINE = MergeTree()
-      PARTITION BY (block_hash)
       ORDER BY (branch, hash);
