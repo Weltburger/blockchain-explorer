@@ -2,27 +2,25 @@ package server
 
 import (
 	"database/sql"
-	"explorer/internal/explorer/delivery/http"
-	"explorer/internal/storage"
+	"explorer/internal/auth"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"log"
 )
 
 type Server struct {
-	Router       *echo.Echo
+	Router     *echo.Echo
+	AuthUC     auth.UserUsecase
 	ClickhouseDB *sql.DB
 }
 
 func NewServer() *Server {
-	server := &Server{
-		Router:     echo.New(),
-		ClickhouseDB: storage.GetDB().DB,
+	ds, err := initDS()
+	if err != nil {
+		log.Println("error init DB connect")
+		return nil
 	}
 
-	server.Router.Use(middleware.Logger())
-	server.Router.Use(middleware.Recover())
-
-	http.RegisterEndpoints(server.Router, server.ClickhouseDB)
+	server := inject(ds)
 
 	return server
 }
