@@ -1,0 +1,60 @@
+version: '3.9'
+
+services:
+  explorer:
+    container_name: explorer
+    build:
+      context: .
+      target: builder
+      #dockerfile: Dockerfile
+    image: explorer
+    restart: unless-stopped
+    networks:
+      - chain-net
+    ports:
+      - "1323:1323"
+    environment:
+      - HTTP_PORT=1323
+      - DB_URL=postgres://postgres:1234@api_db:5432/simple_api?sslmode=disable
+    volumes:
+      - ./:go/src/app
+    depends_on:
+      - postgres_db
+      - clickhouse_db
+
+  postgres_db:
+    container_name: postgres_container
+    image: postgres:alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: simple_api
+      PGDATA: /var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
+    restart: always
+    networks:
+      - chain-net
+    volumes:
+      - database-volume:/var/lib/postgresql/data/
+    command: [ "postgres", "-c", "log_statement=all" ]
+
+  clickhouse_db:
+    container_name: clickhouse_container
+    image: yandex/clickhouse-server
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - ./clikchouse-volume:/var/lib/clickhouse
+    networks:
+      - chain-net
+
+volumes:
+  postgres-volume: null
+  clickhouse-volume:
+
+    null
+networks:
+  chain-net:
+    driver: bridge
