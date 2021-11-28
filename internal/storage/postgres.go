@@ -1,4 +1,4 @@
-package server
+package storage
 
 import (
 	"fmt"
@@ -9,12 +9,12 @@ import (
 	"github.com/spf13/viper"
 )
 
-type dataSources struct {
+type PostgresDataSource struct {
 	DB *sqlx.DB
 }
 
-// InitDS establishes connections to fields in dataSources
-func initDS() (*dataSources, error) {
+// InitDS establishes connections to fields in PostgresDataSource
+func InitPostgres() (*PostgresDataSource, error) {
 	log.Printf("Initializing data sources\n")
 
 	pgHost := viper.GetString("postgres.pg_host")
@@ -38,13 +38,13 @@ func initDS() (*dataSources, error) {
 		return nil, fmt.Errorf("error connecting to db: %w", err)
 	}
 
-	return &dataSources{
+	return &PostgresDataSource{
 		DB: db,
 	}, nil
 }
 
 // close to be used in graceful server shutdown
-func (d *dataSources) close() error {
+func (d *PostgresDataSource) close() error {
 	if err := d.DB.Close(); err != nil {
 		return fmt.Errorf("error closing Postgresql: %w", err)
 	}

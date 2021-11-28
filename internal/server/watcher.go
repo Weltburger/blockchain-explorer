@@ -3,6 +3,7 @@ package server
 import (
 	"explorer/models"
 	"fmt"
+	"github.com/spf13/viper"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -20,13 +21,12 @@ func (s *Server) CheckBlocks() {
 			fmt.Println(err)
 		}
 
-		fmt.Println(*block)
 		time.Sleep(time.Second * 30)
 	}
 }
 
 func getData(index string) (*models.Block, error) {
-	url := fmt.Sprintf("https://testnet-tezos.giganode.io/chains/main/blocks/%s", index)
+	url := fmt.Sprintf(fmt.Sprintf("%s%s", viper.GetString("explorer.node"), index))
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err

@@ -9,5 +9,17 @@ postgres:
   pg_port: 5432
   pg_user: "postgres"
   pg_pass: "1234"
-  pg_db: "blockchain_explorer"
-  pg_ssl: "disable"
+  pg_db:   "blockchain_explorer"
+  pg_ssl:  "disable"
+
+clickhouse:
+  ch_host:  "localhost"
+  ch_port:  8123
+  ch_db:    "blocks"
+  ch_debug: "true"
+
+explorer:
+  totalWorkers: 10
+  crawlerStartPos: 678500
+  step: 1000
+  node: "https://testnet-tezos.giganode.io/chains/main/blocks/"

@@ -11,13 +11,20 @@ func main() {
 
 	err := config.Init()
 	if err != nil {
-		log.Printf("error read config: %v", err)
+		log.Printf("error read config: ", err)
 		return
 	}
-	serv := server.NewServer()
+	serv, err := server.NewServer()
+	if err != nil {
+		log.Fatal("error, while initialising server: ", err)
+		return
+	}
 
-	defer serv.ClickhouseDB.Close()
+	defer serv.Databases.Clickhouse.DB.Close()
+	defer serv.Databases.Postgres.DB.Close()
+
 	go serv.CheckBlocks()
-	go serv.Crawl(678500, 500)
+	go serv.Crawl(678500)
+
 	serv.Router.Logger.Fatal(serv.Router.Start(viper.GetString("address")))
 }

@@ -15,14 +15,19 @@ import (
 	"github.com/spf13/viper"
 )
 
-func inject(d *dataSources) *Server {
+func inject() (*Server, error) {
 	log.Println("Injecting data sources...")
+
+	DataSources, err := storage.InitDataSources()
+	if err != nil {
+		return nil, err
+	}
 
 	server := &Server{
 		Router:     echo.New(),
-		AuthUC:     usecase.NewAuthUseCase(authrepo.NewUserRepository(d.DB),
+		AuthUC:     usecase.NewAuthUseCase(authrepo.NewUserRepository(DataSources.Postgres.DB),
 			[]byte(viper.GetString("auth.signing_key")), viper.GetDuration("auth.token_ttl")),
-		ClickhouseDB: storage.GetDB().DB,
+		Databases: DataSources,
 	}
 
 
@@ -39,17 +44,11 @@ func inject(d *dataSources) *Server {
 	api := server.Router.Group("/api")
 
 	// register explorer endpoints
-	http.RegisterEndpoints(server.Router, server.ClickhouseDB)
+	http.RegisterEndpoints(server.Router, DataSources.Clickhouse.DB)
 
 	// register auth endpoints
 	authhttp.RegisterEndpoints(api, server.AuthUC, validate)
 	api.Use(authhttp.Authorization(server.AuthUC))
 
-	// api.GET("/test", func(c echo.Context) error {
-	// 	return c.JSON(http.StatusOK, "Hello, World!")
-	// })
-
-	// create server struct
-
-	return server
+	return server, nil
 }
