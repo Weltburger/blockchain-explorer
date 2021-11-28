@@ -1,26 +1,22 @@
 package server
 
 import (
-	"database/sql"
 	"explorer/internal/auth"
+	"explorer/internal/storage"
 	"github.com/labstack/echo/v4"
-	"log"
 )
 
 type Server struct {
 	Router     *echo.Echo
 	AuthUC     auth.UserUsecase
-	ClickhouseDB *sql.DB
+	Databases  *storage.DataSources
 }
 
-func NewServer() *Server {
-	ds, err := initDS()
+func NewServer() (*Server, error) {
+	server, err := inject()
 	if err != nil {
-		log.Println("error init DB connect")
-		return nil
+		return nil, err
 	}
 
-	server := inject(ds)
-
-	return server
+	return server, nil
 }

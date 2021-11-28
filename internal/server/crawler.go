@@ -4,14 +4,15 @@ import (
 	"explorer/internal/explorer/repository/clickhouse"
 	"explorer/internal/server/workerpool"
 	"explorer/models"
+	"github.com/spf13/viper"
 	"log"
 	"strconv"
 	"sync"
 	"time"
 )
 
-func (s *Server) Crawl(startPos int64, step int) {
-	stepSize := step
+func (s *Server) Crawl(startPos int64) {
+	stepSize := viper.GetInt("explorer.step")
 	arr := make([]models.Block, 0, stepSize)
 	ch := make(chan models.Block)
 	chB := make(chan bool)
@@ -112,7 +113,7 @@ func (s *Server) Crawl(startPos int64, step int) {
 func saveData(s *Server, blocks ...models.Block) error {
 	wg := &sync.WaitGroup{}
 
-	br := clickhouse.NewBlockRepository(s.ClickhouseDB)
+	br := clickhouse.NewBlockRepository(s.Databases.Clickhouse.DB)
 	err := br.PrepareBlockTx()
 	if err != nil {
 		return err
@@ -149,7 +150,7 @@ func saveData(s *Server, blocks ...models.Block) error {
 }
 
 func saveTransactions(s *Server, blocks ...models.Block) error {
-	trRepo := clickhouse.NewTransRepository(s.ClickhouseDB)
+	trRepo := clickhouse.NewTransRepository(s.Databases.Clickhouse.DB)
 	err := trRepo.PrepareTransactionTx()
 	if err != nil {
 		return err
