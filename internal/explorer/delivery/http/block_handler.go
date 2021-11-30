@@ -22,7 +22,8 @@ func (h *BlockHandler) GetBlock(c echo.Context) error {
 
 	block, err := h.blockUseCase.GetBlock(c.Request().Context(), blk)
 	if err != nil {
-		return c.JSON(http.StatusNotFound, err.Error())
+		c.JSON(http.StatusNotFound, err.Error())
+		return err
 	}
 
 	return c.JSON(http.StatusOK, block)
@@ -40,7 +41,8 @@ func (h *BlockHandler) GetBlocks(c echo.Context) error {
 
 	blocks, err := h.blockUseCase.GetBlocks(c.Request().Context(), offset, limit)
 	if err != nil {
-		return c.String(http.StatusNotFound, err.Error())
+		c.String(http.StatusNotFound, err.Error())
+		return err
 	}
 
 	return c.JSON(http.StatusOK, blocks)

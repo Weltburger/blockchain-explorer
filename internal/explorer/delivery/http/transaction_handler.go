@@ -33,7 +33,8 @@ func (h *TransHandler) GetTransactions(c echo.Context) error {
 
 	transactions, err := h.transUseCase.GetTransactions(c.Request().Context(), offset, limit, blk, hash, acc)
 	if err != nil {
-		return c.String(http.StatusNotFound, err.Error())
+		c.String(http.StatusNotFound, err.Error())
+		return err
 	}
 
 	return c.JSON(http.StatusOK, transactions)

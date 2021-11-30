@@ -1,6 +1,7 @@
 package workerpool
 
 import (
+	"context"
 	"sync"
 )
 
@@ -11,7 +12,6 @@ type Pool struct {
 	concurrency   int
 	Counter       int
 	collector     chan *Task
-	runBackground chan bool
 	Mux			  *sync.Mutex
 }
 
@@ -29,9 +29,9 @@ func (p *Pool) AddTask(task *Task) {
 	p.collector <- task
 }
 
-func (p *Pool) RunBackground() {
+func (p *Pool) RunBackground(ctx context.Context) {
 	for i := 1; i <= p.concurrency; i++ {
-		worker := NewWorker(p.collector, i)
+		worker := NewWorker(p.collector, i, ctx)
 		p.Workers = append(p.Workers, worker)
 		go worker.StartBackground()
 	}
@@ -39,14 +39,4 @@ func (p *Pool) RunBackground() {
 	for i := range p.Tasks {
 		p.collector <- p.Tasks[i]
 	}
-
-	p.runBackground = make(chan bool)
-	<-p.runBackground
-}
-
-func (p *Pool) Stop() {
-	for i := range p.Workers {
-		p.Workers[i].Stop()
-	}
-	p.runBackground <- true
 }

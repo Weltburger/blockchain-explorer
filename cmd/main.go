@@ -23,8 +23,8 @@ func main() {
 	defer serv.Databases.Clickhouse.DB.Close()
 	defer serv.Databases.Postgres.DB.Close()
 
-	go serv.CheckBlocks()
-	go serv.Crawl(678500)
+	//go watcher.CheckBlocks(serv)
+	//go watcher.Crawl(serv)
 
 	serv.Router.Logger.Fatal(serv.Router.Start(viper.GetString("address")))
 }

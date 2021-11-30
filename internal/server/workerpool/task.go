@@ -8,19 +8,30 @@ import (
 type Task struct {
 	Err  error
 	Data int64
-	f    func(int64) error
-	chE  chan *models.TaskErr
+	ErrChan  chan *models.TaskErr
+	DataChan chan *TotalData
+	Manager  *Manager
+	processingFunc func(data int64, mng *Manager, dataChan chan *TotalData) error
 }
 
-func NewTask(f func(int64) error, data int64, ch chan *models.TaskErr) *Task {
-	return &Task{f: f, Data: data, chE: ch}
+func NewTask(mng *Manager,
+	data int64,
+	errChan chan *models.TaskErr,
+	dataChan chan *TotalData,
+	f func(data int64, mng *Manager, dataChan chan *TotalData) error) *Task {
+	return &Task{Data: data,
+		ErrChan: errChan,
+		DataChan: dataChan,
+		Manager: mng,
+		processingFunc: f,
+	}
 }
 
 func process(workerID int, task *Task) {
 	fmt.Printf("Worker %d processes task %v\n", workerID, task.Data)
-	task.Err = task.f(task.Data)
+	task.Err = task.processingFunc(task.Data, task.Manager, task.DataChan)
 	if task.Err != nil {
-		task.chE <- &models.TaskErr{
+		task.ErrChan <- &models.TaskErr{
 			Err: task.Err,
 			ID:  task.Data,
 		}
