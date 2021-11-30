@@ -22,4 +22,4 @@ explorer:
   totalWorkers: 10
   crawlerStartPos: 675800
   step: 1000
-  node: "https://mainnet-tezos.giganode.io/chains/main/blocks/"
+  node: "https://testnet-tezos.giganode.io/chains/main/blocks/"

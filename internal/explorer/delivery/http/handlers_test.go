@@ -24,6 +24,7 @@ var block = models.Block{
 }
 
 type testBlockUseCase struct{}
+type testTransactionUseCase struct{}
 type RWriter struct{}
 
 func (RWriter) Header() http.Header {
@@ -66,6 +67,46 @@ func (testBlockUseCase) GetBlocks(ctx context.Context, offset int, limit int) ([
 	return blocks, nil
 }
 
+func (testTransactionUseCase) GetTransactions(ctx context.Context,
+	offset int, limit int, blk string, hash string, acc string) ([]models.Transaction, error) {
+	var transactions []models.Transaction
+	max := 150
+	count := max - offset
+	if limit > count {
+		for i := 1; i <= count; i++ {
+			transactions = append(transactions, models.Transaction{Hash: strconv.Itoa(offset+i)})
+		}
+	} else if count < 1 {
+		return []models.Transaction{}, nil
+	} else {
+		for i := 1; i <= limit; i++ {
+			transactions = append(transactions, models.Transaction{Hash: strconv.Itoa(offset+i)})
+		}
+	}
+
+	if blk == "noBlock" || hash == "noHash" || acc == "noAcc" {
+		return []models.Transaction{}, nil
+	} else {
+		transactions = []models.Transaction{
+			{
+				BlockHash: blk,
+				Hash: hash, Branch: "",
+				Source: acc,
+				Destination: acc,
+				Fee: "",
+				Counter: "",
+				GasLimit: "",
+				Amount: "",
+				ConsumedMilligas: "",
+				StorageSize: "",
+				Signature: "",
+			},
+		}
+	}
+
+	return transactions, nil
+}
+
 func TestBlockHandler_GetBlock(t *testing.T) {
 	echoCtx1 := echo.New().NewContext(&http.Request{
 		URL: &url.URL{},
@@ -92,13 +133,13 @@ func TestBlockHandler_GetBlock(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "Test 1",
+			name:    "GetBlock Test 1",
 			fields:  struct{blockUseCase explorer.BlockUseCase }{blockUseCase: &testBlockUseCase{}},
 			args:    struct{c echo.Context }{c: echoCtx1},
 			wantErr: true,
 		},
 		{
-			name:    "Test 2",
+			name:    "GetBlock Test 2",
 			fields:  struct{blockUseCase explorer.BlockUseCase }{blockUseCase: &testBlockUseCase{}},
 			args:    struct{c echo.Context }{c: echoCtx2},
 			wantErr: false,
@@ -148,21 +189,29 @@ func TestBlockHandler_GetBlocks(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "Test 1",
+			name: "GetBlocks Test 1",
 			fields: struct{blockUseCase explorer.BlockUseCase }{blockUseCase: &testBlockUseCase{}},
 			args: struct{c echo.Context}{c: echoCtx1},
 			wantErr: false,
 		},
 		{
-			name: "Test 2",
+			name: "GetBlocks Test 2",
 			fields: struct{blockUseCase explorer.BlockUseCase }{blockUseCase: &testBlockUseCase{}},
 			args: struct{c echo.Context}{c: echoCtx2},
 			wantErr: false,
 		},
 		{
-			name: "Test 3",
+			name: "GetBlocks Test 3",
 			fields: struct{blockUseCase explorer.BlockUseCase }{blockUseCase: &testBlockUseCase{}},
 			args: struct{c echo.Context}{c: echoCtx3},
+			wantErr: false,
+		},
+		{
+			name: "GetBlocks Test 4",
+			fields: struct{blockUseCase explorer.BlockUseCase }{blockUseCase: &testBlockUseCase{}},
+			args: struct{c echo.Context}{c: echo.New().NewContext(&http.Request{
+				URL: &url.URL{},
+			}, RWriter{})},
 			wantErr: false,
 		},
 	}
@@ -179,6 +228,30 @@ func TestBlockHandler_GetBlocks(t *testing.T) {
 }
 
 func TestTransHandler_GetTransactions(t *testing.T) {
+	URL1 := &url.URL{}
+	URL1.RawQuery = fmt.Sprintf("limit=%s&offset=%s", "5", "50")
+	echoCtx1 := echo.New().NewContext(&http.Request{
+		URL: URL1,
+	}, RWriter{})
+
+	URL2 := &url.URL{}
+	URL2.RawQuery = fmt.Sprintf("blk=noBlock&limit=%s&offset=%s&block=%s", "50", "145", "someBlock")
+	echoCtx2 := echo.New().NewContext(&http.Request{
+		URL: URL2,
+	}, RWriter{})
+
+	URL3 := &url.URL{}
+	URL3.RawQuery = fmt.Sprintf("blk=noBlock&limit=%s&offset=%s&block=%s&hash=%s", "50", "145", "noBlock", "hash")
+	echoCtx3 := echo.New().NewContext(&http.Request{
+		URL: URL3,
+	}, RWriter{})
+
+	URL4 := &url.URL{}
+	URL4.RawQuery = fmt.Sprintf("blk=noBlock&limit=%s&offset=%s&block=%s&account=%s", "50", "145", "someBlock", "noAcc")
+	echoCtx4 := echo.New().NewContext(&http.Request{
+		URL: URL4,
+	}, RWriter{})
+
 	type fields struct {
 		transUseCase explorer.TransUseCase
 	}
@@ -192,10 +265,36 @@ func TestTransHandler_GetTransactions(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: ,
-			fields: ,
-			args: ,
-			wantErr: ,
+			name: "GetTransactions Test 1",
+			fields: struct{transUseCase explorer.TransUseCase }{transUseCase: testTransactionUseCase{}},
+			args: struct{c echo.Context}{c: echoCtx1},
+			wantErr: false,
+		},
+		{
+			name: "GetTransactions Test 2",
+			fields: struct{transUseCase explorer.TransUseCase }{transUseCase: testTransactionUseCase{}},
+			args: struct{c echo.Context}{c: echoCtx2},
+			wantErr: false,
+		},
+		{
+			name: "GetTransactions Test 3",
+			fields: struct{transUseCase explorer.TransUseCase }{transUseCase: testTransactionUseCase{}},
+			args: struct{c echo.Context}{c: echoCtx3},
+			wantErr: false,
+		},
+		{
+			name: "GetTransactions Test 4",
+			fields: struct{transUseCase explorer.TransUseCase }{transUseCase: testTransactionUseCase{}},
+			args: struct{c echo.Context}{c: echoCtx4},
+			wantErr: false,
+		},
+		{
+			name: "GetTransactions Test 5",
+			fields: struct{transUseCase explorer.TransUseCase }{transUseCase: testTransactionUseCase{}},
+			args: struct{c echo.Context}{c: echo.New().NewContext(&http.Request{
+				URL: &url.URL{},
+			}, RWriter{})},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {

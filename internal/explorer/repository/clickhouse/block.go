@@ -4,12 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"explorer/internal/apperrors"
+	"explorer/internal/explorer"
 	"explorer/models"
 	"strings"
 	"time"
 )
 
 type BlockRepository struct {
+	br explorer.BlockRepo
 	DB       *sql.DB
 	Tx       *sql.Tx
 	Stmt     *sql.Stmt
@@ -20,7 +22,6 @@ func NewBlockRepository(db *sql.DB) *BlockRepository {
 		DB: db,
 	}
 }
-
 
 func (b *BlockRepository) PrepareBlockTx() error {
 	trx, err := b.DB.Begin()
@@ -119,7 +120,7 @@ func (b *BlockRepository) GetBlock(ctx context.Context, blk string) (*models.Blo
 			   cycle_num,
 			   cycle_position,
 			   consumed_gas 
-		FROM block WHERE hash = ?
+		FROM blocks.block WHERE hash = ?
 	`, blk)
 	if err != nil {
 		return nil, err
@@ -194,11 +195,11 @@ func (b *BlockRepository) GetBlocks(ctx context.Context, offset, limit int) ([]m
 			   cycle_num,
 			   cycle_position,
 			   consumed_gas 
-		FROM block 
+		FROM blocks.block 
 		LIMIT ?, ?
 	`, offset, limit)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.NewNotFound("clickhouse", "such blocks was")
 	}
 
 	var (
