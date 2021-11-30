@@ -48,16 +48,16 @@ func (testBlockUseCase) GetBlock(ctx context.Context, blk string) (*models.Block
 	return &block, nil
 }
 
-func (testBlockUseCase) GetBlocks(ctx context.Context, offset int, limit int) ([]models.Block, error) {
+func (testBlockUseCase) GetBlocks(ctx context.Context, offset, limit int) ([]models.Block, error) {
 	var blocks []models.Block
 	max := 150
 	count := max - offset
-	if limit > count {
+	if count < 1 {
+		return []models.Block{}, nil
+	} else if limit > count {
 		for i := 1; i <= count; i++ {
 			blocks = append(blocks, models.Block{Hash: strconv.Itoa(offset+i)})
 		}
-	} else if count < 1 {
-		return []models.Block{}, nil
 	} else {
 		for i := 1; i <= limit; i++ {
 			blocks = append(blocks, models.Block{Hash: strconv.Itoa(offset+i)})
@@ -68,19 +68,19 @@ func (testBlockUseCase) GetBlocks(ctx context.Context, offset int, limit int) ([
 }
 
 func (testTransactionUseCase) GetTransactions(ctx context.Context,
-	offset int, limit int, blk string, hash string, acc string) ([]models.Transaction, error) {
+	offset, limit int, blk, hash, acc string) ([]models.Transaction, error) {
 	var transactions []models.Transaction
 	max := 150
 	count := max - offset
-	if limit > count {
-		for i := 1; i <= count; i++ {
-			transactions = append(transactions, models.Transaction{Hash: strconv.Itoa(offset+i)})
-		}
-	} else if count < 1 {
+	if count < 1 {
 		return []models.Transaction{}, nil
+	} else if limit > count {
+		for i := 1; i <= count; i++ {
+			transactions = append(transactions, models.Transaction{})
+		}
 	} else {
 		for i := 1; i <= limit; i++ {
-			transactions = append(transactions, models.Transaction{Hash: strconv.Itoa(offset+i)})
+			transactions = append(transactions, models.Transaction{})
 		}
 	}
 

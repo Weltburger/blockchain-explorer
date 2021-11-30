@@ -4,14 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"explorer/internal/apperrors"
-	"explorer/internal/explorer"
 	"explorer/models"
 	"strings"
 	"time"
 )
 
 type BlockRepository struct {
-	br explorer.BlockRepo
 	DB       *sql.DB
 	Tx       *sql.Tx
 	Stmt     *sql.Stmt
@@ -102,7 +100,7 @@ func (b *BlockRepository) Cmt() error {
 	return nil
 }
 
-func (b *BlockRepository) GetBlock(ctx context.Context, blk string) (*models.Block, error) {
+func (b *BlockRepository) GetBlockByHash(ctx context.Context, blk string) (*models.Block, error) {
 	resp, err := b.DB.QueryContext(ctx, `
 		SELECT protocol,
 			   chain_id,
@@ -121,6 +119,61 @@ func (b *BlockRepository) GetBlock(ctx context.Context, blk string) (*models.Blo
 			   cycle_position,
 			   consumed_gas 
 		FROM blocks.block WHERE hash = ?
+	`, blk)
+	if err != nil {
+		return nil, err
+	}
+
+	var tm time.Time
+	var fitness string
+	block := new(models.Block)
+
+	resp.Next()
+	err = resp.Scan(&block.Protocol,
+		&block.ChainID,
+		&block.Hash,
+		&block.Header.BakerFee,
+		&block.Metadata.LevelInfo.Level,
+		&block.Header.Predecessor,
+		&block.Header.Priority,
+		&tm,
+		&block.Header.ValidationPass,
+		&block.Header.OperationsHash,
+		&fitness,
+		&block.Header.Signature,
+		&block.Metadata.Baker,
+		&block.Metadata.LevelInfo.Cycle,
+		&block.Metadata.LevelInfo.CyclePosition,
+		&block.Metadata.ConsumedGas)
+	if err != nil {
+		return nil, apperrors.NewNotFound("clickhouse", "such block was")
+	}
+
+	block.Header.Timestamp = tm.String()
+	block.Header.Fitness = strings.Split(fitness, ",")
+
+	return block, nil
+}
+
+func (b *BlockRepository) GetBlockByLevel(ctx context.Context, blk int64) (*models.Block, error) {
+	resp, err := b.DB.QueryContext(ctx, `
+		SELECT protocol,
+			   chain_id,
+			   hash,
+			   baker_fees,
+			   "level",
+			   predecessor,
+			   priority,
+			   "timestamp",
+			   validation_pass,
+			   validation_hash,
+			   fitness,
+			   signature,
+			   baker,
+			   cycle_num,
+			   cycle_position,
+			   consumed_gas 
+		FROM blocks.block WHERE "level" = ?
 	`, blk)
 	if err != nil {
 		return nil, err
