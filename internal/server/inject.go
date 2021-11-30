@@ -7,12 +7,14 @@ import (
 	"explorer/internal/explorer/delivery/http"
 	"explorer/internal/storage"
 	"log"
+	"os"
+	"strconv"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	echolog "github.com/labstack/gommon/log"
-	"github.com/spf13/viper"
 )
 
 func inject() (*Server, error) {
@@ -23,13 +25,17 @@ func inject() (*Server, error) {
 		return nil, err
 	}
 
-	server := &Server{
-		Router:     echo.New(),
-		AuthUC:     usecase.NewAuthUseCase(authrepo.NewUserRepository(DataSources.Postgres.DB),
-			[]byte(viper.GetString("auth.signing_key")), viper.GetDuration("auth.token_ttl")),
-		Databases: DataSources,
+	tokenTTL, err := strconv.Atoi(os.Getenv("TOKEN_TTL"))
+	if err != nil {
+		return nil, err
 	}
 
+	server := &Server{
+		Router: echo.New(),
+		AuthUC: usecase.NewAuthUseCase(authrepo.NewUserRepository(DataSources.Postgres.DB),
+			[]byte(os.Getenv("SIGNING_KEY")), time.Duration(tokenTTL)),
+		Databases: DataSources,
+	}
 
 	server.Router.Debug = true
 

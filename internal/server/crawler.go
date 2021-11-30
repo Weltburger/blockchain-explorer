@@ -4,15 +4,19 @@ import (
 	"explorer/internal/explorer/repository/clickhouse"
 	"explorer/internal/server/workerpool"
 	"explorer/models"
-	"github.com/spf13/viper"
 	"log"
+	"os"
 	"strconv"
 	"sync"
 	"time"
 )
 
 func (s *Server) Crawl(startPos int64) {
-	stepSize := viper.GetInt("explorer.step")
+	stepSize, err := strconv.Atoi(os.Getenv("STEP"))
+	if err != nil {
+		log.Println("error step convert: ", err)
+		return
+	}
 	arr := make([]models.Block, 0, stepSize)
 	ch := make(chan models.Block)
 	chB := make(chan bool)
@@ -65,37 +69,37 @@ func (s *Server) Crawl(startPos int64) {
 
 	go func() {
 		defer wg.Done()
-		ForLoop:
-			for {
-				select {
-				case str := <-ch:
-					arr = append(arr, str)
-				case <- chB:
+	ForLoop:
+		for {
+			select {
+			case str := <-ch:
+				arr = append(arr, str)
+			case <-chB:
+				err := saveData(s, arr...)
+				if err != nil {
+					log.Println(err)
+				}
+				arr = make([]models.Block, 0, stepSize)
+			case err := <-chE:
+				go func() {
+					log.Println(err.Err)
+					task := workerpool.NewTask(f, err.ID, chE)
+					pool.AddTask(task)
+				}()
+			case <-chC:
+				go func() {
+					time.Sleep(time.Second * 30)
 					err := saveData(s, arr...)
 					if err != nil {
 						log.Println(err)
 					}
-					arr = make([]models.Block, 0, stepSize)
-				case err := <-chE:
-					go func() {
-						log.Println(err.Err)
-						task := workerpool.NewTask(f, err.ID, chE)
-						pool.AddTask(task)
-					}()
-				case <- chC:
-					go func() {
-						time.Sleep(time.Second * 30)
-						err := saveData(s, arr...)
-						if err != nil {
-							log.Println(err)
-						}
-						chF <- true
-					}()
-				case <- chF:
-					break ForLoop
-				default:
-				}
+					chF <- true
+				}()
+			case <-chF:
+				break ForLoop
+			default:
 			}
+		}
 	}()
 
 	go func() {
@@ -207,4 +211,3 @@ func getTransactions(block *models.Block) []models.Transaction {
 
 	return transactions
 }
-

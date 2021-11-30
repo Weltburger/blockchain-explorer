@@ -3,9 +3,9 @@ package server
 import (
 	"explorer/models"
 	"fmt"
-	"github.com/spf13/viper"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -26,7 +26,7 @@ func (s *Server) CheckBlocks() {
 }
 
 func getData(index string) (*models.Block, error) {
-	url := fmt.Sprintf(fmt.Sprintf("%s%s", viper.GetString("explorer.node"), index))
+	url := fmt.Sprintf("%s%s", os.Getenv("NODE"), index)
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err

@@ -3,8 +3,9 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"os"
+
 	_ "github.com/mailru/go-clickhouse"
-	"github.com/spf13/viper"
 )
 
 type ClickhouseDataSource struct {
@@ -12,12 +13,12 @@ type ClickhouseDataSource struct {
 }
 
 func InitClickhouse() (*ClickhouseDataSource, error) {
-	chHost := viper.GetString("clickhouse.ch_host")
-	chPort := viper.GetInt("clickhouse.ch_port")
-	chDB := viper.GetString("clickhouse.ch_db")
-	chDebug := viper.GetString("clickhouse.ch_debug")
+	chHost := os.Getenv("CH_HOST")
+	chPort := os.Getenv("CH_PORT")
+	chDB := os.Getenv("CH_DB")
+	chDebug := os.Getenv("CH_DEBUG")
 
-	chConnString := fmt.Sprintf("http://%s:%d/%s?debug=%s", chHost, chPort, chDB, chDebug)
+	chConnString := fmt.Sprintf("http://%s:%s/%s?debug=%s", chHost, chPort, chDB, chDebug)
 
 	db, err := sql.Open("clickhouse", chConnString)
 	if err != nil {

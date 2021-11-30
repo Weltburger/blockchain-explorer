@@ -1,0 +1,76 @@
+version: '3.9'
+
+services:
+  explorer:
+    container_name: explorer
+    hostname: explorer
+    build:
+      context: .
+      target: builder
+    image: explorer
+    restart: on-failure
+    networks:
+      - blockchainnet
+    ports:
+      - 1323:1323
+    environment:
+      - HTTP_PORT=:1323
+      - SIGNING_KEY=strongPassword
+      - TOKEN_TTL=86400
+      - TOTAL_WORKERS=10
+      - CRAWLER_START=678500
+      - STEP=1000
+      - NODE=https://testnet-tezos.giganode.io/chains/main/blocks/
+      - POSTGRES_HOST=pgdb
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=1234
+      - POSTGRES_DB=blockchain_explorer
+      - POSTGRES_DATA=/var/lib/postgresql/data/
+      - CLICKHOUSE_HOST=chdb
+      - CLICKHOUSE_PORT=8123
+      - CLICKHOUSE_DB=blocks
+      - CLICKHOUSE_DEBUG=true
+    volumes:
+      - ./:/app
+    depends_on:
+      - postgres_db
+      - clickhouse_db
+
+  postgres_db:
+    container_name: pg_db
+    hostname: pgdb
+    image: postgres:alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=1234
+      - POSTGRES_DB=blockchain_explorer
+      - POSTGRES_DATA=/var/lib/postgresql/data/
+    ports:
+      - 5432:5432
+    restart: on-failure
+    networks:
+      - blockchainnet
+    volumes:
+      - pgvolume:/var/lib/postgresql/data/
+    command: [ "postgres", "-c", "log_statement=all" ]
+
+  clickhouse_db:
+    container_name: ch_db
+    hostname: chdb
+    image: yandex/clickhouse-server
+    ports:
+      - 8123:8123
+      - 9000:9000
+    volumes:
+      - ./chvolume:/var/lib/clickhouse
+    #      - ./internal/storage/init-defaults.sh:/docker-entrypoint-initdb.d/init-defaults.sh:ro
+    networks:
+      - blockchainnet
+
+volumes:
+  pgvolume: null
+  chvolume: null
+networks:
+  blockchainnet:
+    driver: bridge

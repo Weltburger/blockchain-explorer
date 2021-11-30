@@ -3,10 +3,10 @@ package storage
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/spf13/viper"
 )
 
 type PostgresDataSource struct {
@@ -17,14 +17,13 @@ type PostgresDataSource struct {
 func InitPostgres() (*PostgresDataSource, error) {
 	log.Printf("Initializing data sources\n")
 
-	pgHost := viper.GetString("postgres.pg_host")
-	pgPort := viper.GetInt("postgres.pg_port")
-	pgUser := viper.GetString("postgres.pg_user")
-	pgPassword := viper.GetString("postgres.pg_pass")
-	pgDB := viper.GetString("postgres.pg_db")
-	pgSSL := viper.GetString("postgres.pg_ssl")
+	pgHost := os.Getenv("POSTGRES_HOST")
+	pgPort := os.Getenv("POSTGRES_PORT")
+	pgUser := os.Getenv("POSTGRES_USER")
+	pgPassword := os.Getenv("POSTGRES_PASSWORD")
+	pgDB := os.Getenv("POSTGRES_DB")
 
-	pgConnString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s", pgHost, pgPort, pgUser, pgPassword, pgDB, pgSSL)
+	pgConnString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", pgHost, pgPort, pgUser, pgPassword, pgDB)
 
 	log.Printf("Connecting to Postgresql\n")
 	db, err := sqlx.Open("postgres", pgConnString)
