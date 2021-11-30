@@ -3,34 +3,30 @@ version: '3.9'
 services:
   explorer:
     container_name: explorer
-    hostname: explorer
     build:
       context: .
       target: builder
     image: explorer
     restart: on-failure
     networks:
-      - blockchainnet
+      - mynet
     ports:
       - 1323:1323
     environment:
-      - HTTP_PORT=:1323
-      - SIGNING_KEY=strongPassword
-      - TOKEN_TTL=86400
-      - TOTAL_WORKERS=10
-      - CRAWLER_START=678500
-      - STEP=1000
-      - NODE=https://testnet-tezos.giganode.io/chains/main/blocks/
-      - POSTGRES_HOST=pgdb
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=1234
-      - POSTGRES_DB=blockchain_explorer
-      - POSTGRES_DATA=/var/lib/postgresql/data/
-      - CLICKHOUSE_HOST=chdb
-      - CLICKHOUSE_PORT=8123
-      - CLICKHOUSE_DB=blocks
-      - CLICKHOUSE_DEBUG=true
+      - HTTP_PORT=${HTTP_PORT:-1323}
+      - SIGNING_KEY=${SIGNING_KEY:-strongPassword}
+      - TOKEN_TTL=${TOKEN_TTL:-86400}
+      - STEP=${STEP:-1000}
+      - NODE=${NODE:-https://testnet-tezos.giganode.io/chains/main/blocks/}
+      - POSTGRES_HOST=${POSTGRES_HOST:-pgdb}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSOWRD:-mysecretpassword}
+      - POSTGRES_DB=${POSTGRES_DB:-blockchain_explorer}
+      - PGDATA=${POSTGRES_DATA:-/var/lib/postgresql/data/}
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-chdb}
+      - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8123}
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-blocks}
     volumes:
       - ./:/app
     depends_on:
@@ -42,15 +38,15 @@ services:
     hostname: pgdb
     image: postgres:alpine
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=1234
-      - POSTGRES_DB=blockchain_explorer
-      - POSTGRES_DATA=/var/lib/postgresql/data/
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSOWRD:-mysecretpassword}
+      - POSTGRES_DB=${POSTGRES_DB:-blockchain_explorer}
+      - PGDATA=${POSTGRES_DATA:-/var/lib/postgresql/data/}
     ports:
       - 5432:5432
     restart: on-failure
     networks:
-      - blockchainnet
+      - mynet
     volumes:
       - pgvolume:/var/lib/postgresql/data/
     command: [ "postgres", "-c", "log_statement=all" ]
@@ -59,18 +55,20 @@ services:
     container_name: ch_db
     hostname: chdb
     image: yandex/clickhouse-server
+    environment:
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-blocks}
     ports:
       - 8123:8123
       - 9000:9000
     volumes:
-      - ./chvolume:/var/lib/clickhouse
-    #      - ./internal/storage/init-defaults.sh:/docker-entrypoint-initdb.d/init-defaults.sh:ro
+      - chvolume:/var/lib/clickhouse
+      # - ./internal/storage/init-defaults.sh:/docker-entrypoint-initdb.d/init-defaults.sh:ro
     networks:
-      - blockchainnet
+      - mynet
 
 volumes:
   pgvolume: null
   chvolume: null
 networks:
-  blockchainnet:
+  mynet:
     driver: bridge
