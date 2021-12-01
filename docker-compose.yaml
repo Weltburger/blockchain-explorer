@@ -2,14 +2,17 @@ version: '3.9'
 
 services:
   explorer:
-    container_name: explorer
+    depends_on:
+      - postgres_db
+      - clickhouse_db
+    container_name: rest-server
     build:
       context: .
       target: builder
     image: explorer
-    restart: on-failure
+    hostname: rest-server
     networks:
-      - mynet
+      - blocknet
     ports:
       - 1323:1323
     environment:
@@ -21,24 +24,21 @@ services:
       - POSTGRES_HOST=${POSTGRES_HOST:-pgdb}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSOWRD:-mysecretpassword}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-mysecretpassword}
       - POSTGRES_DB=${POSTGRES_DB:-blockchain_explorer}
       - PGDATA=${POSTGRES_DATA:-/var/lib/postgresql/data/}
       - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-chdb}
       - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8123}
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-blocks}
+      - CLICKHOUSE_DEBUG=${CLICKHOUSE_DEBUG:-true}
     volumes:
-      - ./:/app
-    depends_on:
-      - postgres_db
-      - clickhouse_db
-
+      - ./internal/storage/migrations:/migrations
   postgres_db:
     container_name: pg_db
     hostname: pgdb
     image: postgres:alpine
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_HOST_AUTH_METHOD=${POSTGRES_HOST_AUTH_METHOD:-trust}
       - POSTGRES_PASSWORD=${POSTGRES_PASSOWRD:-mysecretpassword}
       - POSTGRES_DB=${POSTGRES_DB:-blockchain_explorer}
       - PGDATA=${POSTGRES_DATA:-/var/lib/postgresql/data/}
@@ -46,10 +46,22 @@ services:
       - 5432:5432
     restart: on-failure
     networks:
-      - mynet
+      - blocknet
     volumes:
       - pgvolume:/var/lib/postgresql/data/
+      - ./pg_hba.conf:/var/lib/postgresql/data/pg_hba.conf
+      # - ./internal/auth/migrations/001_create_users_table.up.sql://docker-entrypoint-initdb.d/001_create_users_table.up.sql
     command: [ "postgres", "-c", "log_statement=all" ]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres -d blockchain_explorer"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   clickhouse_db:
     container_name: ch_db
@@ -62,13 +74,12 @@ services:
       - 9000:9000
     volumes:
       - chvolume:/var/lib/clickhouse
-      # - ./internal/storage/init-defaults.sh:/docker-entrypoint-initdb.d/init-defaults.sh:ro
     networks:
-      - mynet
+      - blocknet
 
 volumes:
   pgvolume: null
   chvolume: null
 networks:
-  mynet:
+  blocknet:
     driver: bridge

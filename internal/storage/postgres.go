@@ -7,6 +7,7 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
@@ -44,16 +45,16 @@ func InitPostgres() (*PostgresDataSource, error) {
 		return nil, fmt.Errorf("error create driver for migrate: %v", err)
 	}
 	m, err := migrate.NewWithDatabaseInstance(
-		"file://../auth/migrations",
+		"file://migrations/pg",
 		"postgres", driver)
 	if err != nil {
 		return nil, fmt.Errorf("error create migrating: %v", err)
 	}
-	defer m.Close()
+
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return nil, err
 	}
-	log.Printf("Migrate finished\n")
+	log.Printf("Migration done\n")
 
 	return &PostgresDataSource{
 		DB: db,
