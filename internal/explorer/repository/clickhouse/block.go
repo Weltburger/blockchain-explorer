@@ -100,6 +100,14 @@ func (b *BlockRepository) Cmt() error {
 	return nil
 }
 
+func (b *BlockRepository) Rollback() error {
+	if err := b.Tx.Rollback(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (b *BlockRepository) GetBlockByHash(ctx context.Context, blk string) (*models.Block, error) {
 	resp, err := b.DB.QueryContext(ctx, `
 		SELECT protocol,

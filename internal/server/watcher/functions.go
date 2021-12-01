@@ -65,7 +65,7 @@ func saveBlocks(s *server.Server, blocks ...models.Block) error {
 		return err
 	}
 
-	defer blRepo.Tx.Rollback()
+	defer blRepo.Rollback()
 
 	for _, block := range blocks {
 		err := blRepo.Exc(&block)

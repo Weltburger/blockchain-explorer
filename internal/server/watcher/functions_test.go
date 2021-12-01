@@ -88,6 +88,7 @@ var (
 )
 
 type testGetter struct {}
+type testBlockRepoCrawler struct {}
 
 func (testGetter) Get(url string) (*http.Response, error) {
 	if url == "error" {
@@ -117,6 +118,19 @@ func (testGetter) Get(url string) (*http.Response, error) {
 			Body:             resp.Body,
 		}, nil
 	}
+}
+
+func (testBlockRepoCrawler) PrepareBlockTx() error {
+	return nil
+}
+func (testBlockRepoCrawler) Exc(data *models.Block) error {
+	return nil
+}
+func (testBlockRepoCrawler) Cmt() error {
+	return nil
+}
+func (testBlockRepoCrawler) Rollback() error {
+	return nil
 }
 
 func TestGetData(t *testing.T) {

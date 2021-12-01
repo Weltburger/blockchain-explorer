@@ -3,6 +3,7 @@ package main
 import (
 	"explorer/config"
 	"explorer/internal/server"
+	"explorer/internal/server/watcher"
 	"github.com/labstack/gommon/log"
 	"github.com/spf13/viper"
 )
@@ -24,7 +25,7 @@ func main() {
 	defer serv.Databases.Postgres.DB.Close()
 
 	//go watcher.CheckBlocks(serv)
-	//go watcher.Crawl(serv)
+	go watcher.Crawl(serv)
 
 	serv.Router.Logger.Fatal(serv.Router.Start(viper.GetString("address")))
 }

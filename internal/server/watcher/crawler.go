@@ -5,17 +5,17 @@ import (
 	"explorer/internal/server"
 	"explorer/internal/server/workerpool"
 	"explorer/models"
+	"fmt"
 	"github.com/spf13/viper"
 	"log"
 	"net/http"
 	"strconv"
 	"sync"
-	"time"
 )
 
 func Crawl(s *server.Server) {
 	wg := &sync.WaitGroup{}
-	stepSize := viper.GetInt("explorer.step")
+	//stepSize := viper.GetInt("explorer.step")
 	dataChan := make(chan *workerpool.TotalData)
 	errChan := make(chan *models.TaskErr)
 	numChan := make(chan int64)
@@ -35,11 +35,18 @@ func Crawl(s *server.Server) {
 			for {
 				select {
 				case data := <-dataChan:
-					saveBlocks(s, data.Blocks...)
-					saveTransactions(s, data.Transactions...)
-					if len(data.Blocks) != stepSize {
+					fmt.Println("aboba")
+					//saveBlocks(s, data.Blocks...)
+					//saveTransactions(s, data.Transactions...)
+					fmt.Println(len(data.Blocks))
+					fmt.Println(len(data.Transactions))
+					manager.Reset()
+					fmt.Println(len(data.Blocks))
+					fmt.Println(len(data.Transactions))
+					/*if len(data.Blocks) != stepSize {
 						manager.Cancel()
-					}
+					}*/
+
 				case err := <-errChan:
 					log.Println(err.Err)
 					numChan <- err.ID
@@ -50,7 +57,7 @@ func Crawl(s *server.Server) {
 			}
 	}(manager.Context)
 
-	go manager.Process(manager, errChan, dataChan, processingFunc)
+	go manager.Process(errChan, dataChan, processingFunc)
 
 	for i := viper.GetInt64("explorer.crawlerStartPos"); i >= 0; i-- {
 		numChan <- i
@@ -59,7 +66,7 @@ func Crawl(s *server.Server) {
 	wg.Wait()
 }
 
-func processingFunc(data int64, mng *workerpool.Manager, dataChan chan *workerpool.TotalData) error {
+func processingFunc(data int64, dataChan chan *workerpool.TotalData) error {
 	blockID := data
 	for {
 		block, err := GetData(&http.Client{}, strconv.FormatInt(blockID, 10))
@@ -70,17 +77,31 @@ func processingFunc(data int64, mng *workerpool.Manager, dataChan chan *workerpo
 		if block.Hash != "" {
 			transactions := GetTransactions(&block)
 
-			mng.Mux.Lock()
+			td := &workerpool.TotalData{
+				Blocks:       []models.Block{block},
+				Transactions: transactions,
+			}
+
+			go func() {
+				/*if blockID == 0 {
+					time.Sleep(time.Second*5)
+				}*/
+				dataChan <- td
+			}()
+
+			/*mng.Mux.Lock()
 			mng.Counter++
 			mng.Data.Blocks = append(mng.Data.Blocks, block)
 			mng.Data.Transactions = append(mng.Data.Transactions, transactions...)
-			mng.Mux.Unlock()
+
 
 			if mng.Counter == viper.GetInt("explorer.step") || blockID == 0 {
-				time.Sleep(time.Second*10)
+				time.Sleep(time.Second*5)
 				dataChan <- mng.Data
+				time.Sleep(time.Second)
 				mng.Reset()
 			}
+			mng.Mux.Unlock()*/
 
 		} else {
 			continue
@@ -88,5 +109,5 @@ func processingFunc(data int64, mng *workerpool.Manager, dataChan chan *workerpo
 
 		return nil
 	}
+	return nil
 }
-

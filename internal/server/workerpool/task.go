@@ -10,26 +10,23 @@ type Task struct {
 	Data int64
 	ErrChan  chan *models.TaskErr
 	DataChan chan *TotalData
-	Manager  *Manager
-	processingFunc func(data int64, mng *Manager, dataChan chan *TotalData) error
+	processingFunc func(data int64, dataChan chan *TotalData) error
 }
 
-func NewTask(mng *Manager,
-	data int64,
+func NewTask(data int64,
 	errChan chan *models.TaskErr,
 	dataChan chan *TotalData,
-	f func(data int64, mng *Manager, dataChan chan *TotalData) error) *Task {
+	f func(data int64, dataChan chan *TotalData) error) *Task {
 	return &Task{Data: data,
 		ErrChan: errChan,
 		DataChan: dataChan,
-		Manager: mng,
 		processingFunc: f,
 	}
 }
 
 func process(workerID int, task *Task) {
-	fmt.Printf("Worker %d processes task %v\n", workerID, task.Data)
-	task.Err = task.processingFunc(task.Data, task.Manager, task.DataChan)
+	//fmt.Printf("Worker %d processes task %v\n", workerID, task.Data)
+	task.Err = task.processingFunc(task.Data, task.DataChan)
 	if task.Err != nil {
 		task.ErrChan <- &models.TaskErr{
 			Err: task.Err,
