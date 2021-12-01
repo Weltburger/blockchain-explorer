@@ -5,7 +5,6 @@ import (
 	"explorer/internal/server"
 	"explorer/internal/server/workerpool"
 	"explorer/models"
-	"fmt"
 	"github.com/spf13/viper"
 	"log"
 	"net/http"
@@ -15,7 +14,6 @@ import (
 
 func Crawl(s *server.Server) {
 	wg := &sync.WaitGroup{}
-	//stepSize := viper.GetInt("explorer.step")
 	dataChan := make(chan *workerpool.TotalData)
 	errChan := make(chan *models.TaskErr)
 	numChan := make(chan int64)
@@ -35,18 +33,9 @@ func Crawl(s *server.Server) {
 			for {
 				select {
 				case data := <-dataChan:
-					fmt.Println("aboba")
-					//saveBlocks(s, data.Blocks...)
-					//saveTransactions(s, data.Transactions...)
-					fmt.Println(len(data.Blocks))
-					fmt.Println(len(data.Transactions))
+					saveBlocks(s, data.Blocks...)
+					saveTransactions(s, data.Transactions...)
 					manager.Reset()
-					fmt.Println(len(data.Blocks))
-					fmt.Println(len(data.Transactions))
-					/*if len(data.Blocks) != stepSize {
-						manager.Cancel()
-					}*/
-
 				case err := <-errChan:
 					log.Println(err.Err)
 					numChan <- err.ID
@@ -83,31 +72,12 @@ func processingFunc(data int64, dataChan chan *workerpool.TotalData) error {
 			}
 
 			go func() {
-				/*if blockID == 0 {
-					time.Sleep(time.Second*5)
-				}*/
 				dataChan <- td
 			}()
-
-			/*mng.Mux.Lock()
-			mng.Counter++
-			mng.Data.Blocks = append(mng.Data.Blocks, block)
-			mng.Data.Transactions = append(mng.Data.Transactions, transactions...)
-
-
-			if mng.Counter == viper.GetInt("explorer.step") || blockID == 0 {
-				time.Sleep(time.Second*5)
-				dataChan <- mng.Data
-				time.Sleep(time.Second)
-				mng.Reset()
-			}
-			mng.Mux.Unlock()*/
-
 		} else {
 			continue
 		}
 
 		return nil
 	}
-	return nil
 }
