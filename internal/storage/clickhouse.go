@@ -22,7 +22,7 @@ func InitClickhouse() (*ClickhouseDataSource, error) {
 	chDB := os.Getenv("CLICKHOUSE_DB")
 	chDebug := os.Getenv("CLICKHOUSE_DEBUG")
 
-	chConnString := fmt.Sprintf("http://%s:%s/%s?debug=%s", chHost/*"clickhouse_db"*/, chPort, chDB, chDebug)
+	chConnString := fmt.Sprintf("http://%s:%s/%s?debug=%s", chHost, chPort, chDB, chDebug)
 
 	db, err := sql.Open("clickhouse", chConnString)
 	if err != nil {
@@ -36,6 +36,7 @@ func InitClickhouse() (*ClickhouseDataSource, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error create driver for migrate: %v", err)
 	}
+
 	sourceURL, err := (&file.File{}).Open("file://internal/storage/migrations/ch")
 	if err != nil {
 		log.Fatal(err)

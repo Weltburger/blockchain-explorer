@@ -6,9 +6,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      #target: builder
-    #image: explorer
-    #hostname: rest-server
     restart: unless-stopped
     networks:
       - blocknet
@@ -23,7 +20,7 @@ services:
       - POSTGRES_HOST=${POSTGRES_HOST:-pgdb}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-mysecretpassword}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-1234}
       - POSTGRES_DB=${POSTGRES_DB:-blockchain_explorer}
       - PGDATA=${POSTGRES_DATA:-/var/lib/postgresql/data/}
       - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-chdb}
@@ -52,8 +49,6 @@ services:
       - blocknet
     volumes:
       - pgvolume:/var/lib/postgresql/data/
-      #- ./pg_hba.conf:/var/lib/postgresql/data/pg_hba.conf
-      # - ./internal/auth/migrations/001_create_users_table.up.sql://docker-entrypoint-initdb.d/001_create_users_table.up.sql
     command: [ "postgres", "-c", "log_statement=all" ]
     healthcheck:
       test:
@@ -81,8 +76,8 @@ services:
       - blocknet
 
 volumes:
-  pgvolume: #null
-  chvolume: #null
+  pgvolume:
+  chvolume:
 networks:
   blocknet:
     driver: bridge

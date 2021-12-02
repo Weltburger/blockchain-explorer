@@ -16,18 +16,17 @@ type PostgresDataSource struct {
 	DB *sqlx.DB
 }
 
-// InitDS establishes connections to fields in PostgresDataSource
+// InitPostgres establishes connections to fields in PostgresDataSource
 func InitPostgres() (*PostgresDataSource, error) {
 	log.Printf("Initializing data sources\n")
 
-	//pgHost := os.Getenv("POSTGRES_HOST")
+	pgHost := os.Getenv("POSTGRES_HOST")
 	pgPort := os.Getenv("POSTGRES_PORT")
-	//pgUser := os.Getenv("POSTGRES_USER")
-	//pgPassword := os.Getenv("POSTGRES_PASSWORD")
+	pgUser := os.Getenv("POSTGRES_USER")
+	pgPassword := os.Getenv("POSTGRES_PASSWORD")
 	pgDB := os.Getenv("POSTGRES_DB")
 
-	//pgConnString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", pgHost, pgPort, pgUser, pgPassword, pgDB)
-	pgConnString := fmt.Sprintf("%s://%s:%s@postgres_db:%s/%s?sslmode=disable", "postgres", "postgres", "1234", pgPort, pgDB)
+	pgConnString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", pgHost, pgPort, pgUser, pgPassword, pgDB)
 
 	log.Printf("Connecting to Postgresql\n")
 	db, err := sqlx.Open("postgres", pgConnString)
