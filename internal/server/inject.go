@@ -4,8 +4,8 @@ import (
 	authhttp "explorer/internal/auth/delivery/http"
 	authrepo "explorer/internal/auth/repository/postgres"
 	"explorer/internal/auth/usecase"
-	"explorer/internal/explorer/delivery/http"
 	"explorer/internal/storage"
+	"http"
 	"log"
 	"os"
 	"strconv"
@@ -43,6 +43,11 @@ func inject() (*Server, error) {
 	server.Router.Use(middleware.Logger())
 	server.Router.Logger.SetLevel(echolog.DEBUG)
 	server.Router.Use(middleware.Recover())
+
+	server.Router.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
+	}))
 
 	// create input fields validator
 	validate := validator.New()
