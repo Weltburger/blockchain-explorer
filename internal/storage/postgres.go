@@ -20,13 +20,14 @@ type PostgresDataSource struct {
 func InitPostgres() (*PostgresDataSource, error) {
 	log.Printf("Initializing data sources\n")
 
-	pgHost := os.Getenv("POSTGRES_HOST")
+	//pgHost := os.Getenv("POSTGRES_HOST")
 	pgPort := os.Getenv("POSTGRES_PORT")
-	pgUser := os.Getenv("POSTGRES_USER")
-	pgPassword := os.Getenv("POSTGRES_PASSWORD")
+	//pgUser := os.Getenv("POSTGRES_USER")
+	//pgPassword := os.Getenv("POSTGRES_PASSWORD")
 	pgDB := os.Getenv("POSTGRES_DB")
 
-	pgConnString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", pgHost, pgPort, pgUser, pgPassword, pgDB)
+	//pgConnString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", pgHost, pgPort, pgUser, pgPassword, pgDB)
+	pgConnString := fmt.Sprintf("%s://%s:%s@postgres_db:%s/%s?sslmode=disable", "postgres", "postgres", "1234", pgPort, pgDB)
 
 	log.Printf("Connecting to Postgresql\n")
 	db, err := sqlx.Open("postgres", pgConnString)
@@ -45,7 +46,7 @@ func InitPostgres() (*PostgresDataSource, error) {
 		return nil, fmt.Errorf("error create driver for migrate: %v", err)
 	}
 	m, err := migrate.NewWithDatabaseInstance(
-		"file://migrations/pg",
+		"file://internal/storage/migrations/pg",
 		"postgres", driver)
 	if err != nil {
 		return nil, fmt.Errorf("error create migrating: %v", err)
@@ -54,7 +55,7 @@ func InitPostgres() (*PostgresDataSource, error) {
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return nil, err
 	}
-	log.Printf("Migration done\n")
+	log.Printf("Postgres Migration done\n")
 
 	return &PostgresDataSource{
 		DB: db,

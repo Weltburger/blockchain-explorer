@@ -2,9 +2,10 @@ package main
 
 import (
 	"explorer/internal/server"
-	"os"
-
+	"fmt"
 	"github.com/labstack/gommon/log"
+	"os"
+	"strconv"
 )
 
 func main() {
@@ -23,8 +24,13 @@ func main() {
 	defer serv.Databases.Clickhouse.DB.Close()
 	defer serv.Databases.Postgres.DB.Close()
 
+	startPos, err := strconv.ParseInt(os.Getenv("CRAWLER_START_POS"), 10, 64)
+	if err != nil {
+		log.Fatal("error, while getting crawler start position: ", err)
+		return
+	}
 	go serv.CheckBlocks()
-	go serv.Crawl(678500)
+	go serv.Crawl(startPos)
 
-	serv.Router.Logger.Fatal(serv.Router.Start(os.Getenv("HTTP_PORT")))
+	serv.Router.Logger.Fatal(serv.Router.Start(fmt.Sprintf(":%s", os.Getenv("HTTP_PORT"))))
 }

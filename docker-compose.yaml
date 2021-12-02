@@ -2,19 +2,18 @@ version: '3.9'
 
 services:
   explorer:
-    depends_on:
-      - postgres_db
-      - clickhouse_db
     container_name: rest-server
     build:
       context: .
-      target: builder
-    image: explorer
-    hostname: rest-server
+      dockerfile: Dockerfile
+      #target: builder
+    #image: explorer
+    #hostname: rest-server
+    restart: unless-stopped
     networks:
       - blocknet
     ports:
-      - 1323:1323
+      - "1323:1323"
     environment:
       - HTTP_PORT=${HTTP_PORT:-1323}
       - SIGNING_KEY=${SIGNING_KEY:-strongPassword}
@@ -31,25 +30,29 @@ services:
       - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8123}
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-blocks}
       - CLICKHOUSE_DEBUG=${CLICKHOUSE_DEBUG:-true}
+      - CRAWLER_START_POS=${CRAWLER_START_POS:-700000}
     volumes:
       - ./internal/storage/migrations:/migrations
+    depends_on:
+      - postgres_db
+      - clickhouse_db
   postgres_db:
     container_name: pg_db
     hostname: pgdb
-    image: postgres:alpine
+    image: postgres:alpine3.15
     environment:
       - POSTGRES_HOST_AUTH_METHOD=${POSTGRES_HOST_AUTH_METHOD:-trust}
       - POSTGRES_PASSWORD=${POSTGRES_PASSOWRD:-mysecretpassword}
       - POSTGRES_DB=${POSTGRES_DB:-blockchain_explorer}
       - PGDATA=${POSTGRES_DATA:-/var/lib/postgresql/data/}
     ports:
-      - 5432:5432
+      - "5432:5432"
     restart: on-failure
     networks:
       - blocknet
     volumes:
       - pgvolume:/var/lib/postgresql/data/
-      - ./pg_hba.conf:/var/lib/postgresql/data/pg_hba.conf
+      #- ./pg_hba.conf:/var/lib/postgresql/data/pg_hba.conf
       # - ./internal/auth/migrations/001_create_users_table.up.sql://docker-entrypoint-initdb.d/001_create_users_table.up.sql
     command: [ "postgres", "-c", "log_statement=all" ]
     healthcheck:
@@ -70,16 +73,16 @@ services:
     environment:
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-blocks}
     ports:
-      - 8123:8123
-      - 9000:9000
+      - "8123:8123"
+      - "9000:9000"
     volumes:
       - chvolume:/var/lib/clickhouse
     networks:
       - blocknet
 
 volumes:
-  pgvolume: null
-  chvolume: null
+  pgvolume: #null
+  chvolume: #null
 networks:
   blocknet:
     driver: bridge

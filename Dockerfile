@@ -3,30 +3,48 @@
 ##
 ## Build
 ##
-FROM golang:alpine as builder
+#FROM golang:alpine as builder
 
-WORKDIR /app
+#WORKDIR /app
 
-ENV GO111MODULE=on
+#ENV GO111MODULE=on
 
-COPY go.mod ./
-COPY go.sum ./
-RUN go mod download
+#COPY go.mod ./
+#COPY go.sum ./
+#RUN go mod download
 
-COPY . ./
+#COPY . ./
 
-RUN go build -o /server-api ./cmd/main.go
+#RUN go build -o /server-api ./cmd/main.go
 
 ##
 ## Deploy
 ##
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
-WORKDIR /
+#FROM alpine:latest
+#RUN apk --no-cache add ca-certificates
+#WORKDIR /
 
 #Copy executable from builder
-COPY --from=builder /server-api /server-api
+#COPY --from=builder /server-api /server-api
+
+#EXPOSE 1323
+
+#CMD [ "/server-api" ]
+
+# syntax=docker/dockerfile:1
+
+FROM golang:1.17-alpine
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+
+RUN go mod download
+
+COPY . .
+
+RUN go build -o /usr/local/bin/server ./cmd/main.go
 
 EXPOSE 1323
 
-CMD [ "/server-api" ]
+CMD ["/usr/local/bin/server"]
