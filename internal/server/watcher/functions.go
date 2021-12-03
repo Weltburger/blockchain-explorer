@@ -5,10 +5,10 @@ import (
 	"explorer/internal/server"
 	"explorer/models"
 	"fmt"
-	"github.com/spf13/viper"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 )
 
@@ -17,7 +17,7 @@ type Getter interface {
 }
 
 func GetData(getter Getter, index string) (models.Block, error) {
-	url := fmt.Sprintf(fmt.Sprintf("%s%s", viper.GetString("explorer.node"), index))
+	url := fmt.Sprintf(fmt.Sprintf("%s%s", os.Getenv("NODE"), index))
 	resp, err := getter.Get(url)
 	if err != nil {
 		return models.Block{}, err

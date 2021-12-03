@@ -3,7 +3,9 @@ package workerpool
 import (
 	"context"
 	"explorer/models"
-	"github.com/spf13/viper"
+	"log"
+	"os"
+	"strconv"
 	"time"
 )
 
@@ -26,15 +28,24 @@ type TotalData struct {
 
 func CreateManager(ch <-chan int64) *Manager {
 	ctx, cancel := context.WithCancel(context.Background())
+	step, err := strconv.Atoi(os.Getenv("STEP"))
+	if err != nil {
+		log.Fatal("error, while getting crawler start position: ", err)
+	}
+
+	totalWorkers, err := strconv.Atoi(os.Getenv("TOTAL_WORKERS"))
+	if err != nil {
+		log.Fatal("error, while getting crawler start position: ", err)
+	}
 	return &Manager{
 		Counter:  0,
-		Step: viper.GetInt("explorer.step"),
+		Step: step,
 		TaskChan: ch,
 		TDataChan: make(chan *TotalData),
 		ShouldWork: true,
-		Pool:     NewPool(nil, viper.GetInt("explorer.totalWorkers")),
+		Pool:     NewPool(nil, totalWorkers),
 		Data: &TotalData{
-			Blocks:       make([]models.Block, 0, viper.GetInt("explorer.step")),
+			Blocks:       make([]models.Block, 0, step),
 			Transactions: make([]models.Transaction, 0),
 		},
 		Context: ctx,

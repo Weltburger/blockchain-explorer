@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"explorer/internal/apperrors"
 	"explorer/internal/auth"
-	"explorer/internal/auth/apperrors"
 	"explorer/models"
 
 	"github.com/dgrijalva/jwt-go/v4"
@@ -40,7 +40,7 @@ func NewAuthUseCase(
 }
 
 func (a *AuthUseCase) SignUp(ctx context.Context, username, password string) error {
-	pwd, err := encryptPwd(password)
+	pwd, err := hashPassword(password)
 	if err != nil {
 		return err
 	}
@@ -62,11 +62,7 @@ func (a *AuthUseCase) SignIn(ctx context.Context, email, password string) (strin
 	}
 
 	// verify password
-	match, err := comparePwd(user.Password, password)
-	if err != nil {
-		return "", apperrors.NewInternal()
-	}
-
+	match := doPasswordsMatch(user.Password, password)
 	if !match {
 		return "", apperrors.NewAuthorization("Invalid email and password combination")
 	}

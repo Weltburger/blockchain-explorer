@@ -5,14 +5,20 @@ import (
 	"explorer/internal/server"
 	"explorer/internal/server/workerpool"
 	"explorer/models"
-	"github.com/spf13/viper"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"sync"
 )
 
 func Crawl(s *server.Server) {
+	startPos, err := strconv.ParseInt(os.Getenv("CRAWLER_START_POS"), 10, 64)
+	if err != nil {
+		log.Fatal("error, while getting crawler start position: ", err)
+		return
+	}
+
 	wg := &sync.WaitGroup{}
 	dataChan := make(chan *workerpool.TotalData)
 	errChan := make(chan *models.TaskErr)
@@ -48,7 +54,7 @@ func Crawl(s *server.Server) {
 
 	go manager.Process(errChan, dataChan, processingFunc)
 
-	for i := viper.GetInt64("explorer.crawlerStartPos"); i >= 0; i-- {
+	for i := startPos; i >= 0; i-- {
 		numChan <- i
 	}
 
