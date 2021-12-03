@@ -4,9 +4,10 @@ import (
 	authhttp "explorer/internal/auth/delivery/http"
 	authrepo "explorer/internal/auth/repository/postgres"
 	"explorer/internal/auth/usecase"
+	explhttp "explorer/internal/explorer/delivery/http"
 	"explorer/internal/storage"
-	"http"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -55,7 +56,7 @@ func inject() (*Server, error) {
 	api := server.Router.Group("/api")
 
 	// register explorer endpoints
-	http.RegisterEndpoints(server.Router, DataSources.Clickhouse.DB)
+	explhttp.RegisterEndpoints(server.Router, DataSources.Clickhouse.DB)
 
 	// register auth endpoints
 	authhttp.RegisterEndpoints(api, server.AuthUC, validate)
