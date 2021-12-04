@@ -6,19 +6,21 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"time"
 )
 
 type Manager struct {
-	Counter  int
-	Step     int
-	TaskChan <-chan int64
-	TDataChan chan *TotalData
+	Counter    int64
+	Total      int64
+	Step       int64
+	TaskChan   <-chan models.CrawlRange
+	TDataChan  chan *TotalData
+	ErrChan    chan *models.TaskErr
+	ErrHistory map[int64]int
 	ShouldWork bool
-	Pool     *Pool
-	Data     *TotalData
-	Context  context.Context
-	Cancel   context.CancelFunc
+	Pool       *Pool
+	Data       *TotalData
+	Context    context.Context
+	Cancel     context.CancelFunc
 }
 
 type TotalData struct {
@@ -26,37 +28,49 @@ type TotalData struct {
 	Transactions []models.Transaction
 }
 
-func CreateManager(ch <-chan int64) *Manager {
+func CreateManager(ch <-chan models.CrawlRange) *Manager {
 	ctx, cancel := context.WithCancel(context.Background())
-	step, err := strconv.Atoi(os.Getenv("STEP"))
+	step, err := strconv.ParseInt(os.Getenv("STEP"), 10, 64)
 	if err != nil {
-		log.Fatal("error, while getting crawler start position: ", err)
+		log.Fatal("error, while getting crawler step: ", err)
 	}
 
 	totalWorkers, err := strconv.Atoi(os.Getenv("TOTAL_WORKERS"))
 	if err != nil {
-		log.Fatal("error, while getting crawler start position: ", err)
+		log.Fatal("error, while getting manager total workers: ", err)
 	}
 	return &Manager{
-		Counter:  0,
-		Step: step,
-		TaskChan: ch,
-		TDataChan: make(chan *TotalData),
+		Counter:    0,
+		Total:      0,
+		Step:       step,
+		TaskChan:   ch,
+		TDataChan:  make(chan *TotalData),
+		ErrChan:    make(chan *models.TaskErr),
+		ErrHistory: map[int64]int{},
 		ShouldWork: true,
-		Pool:     NewPool(nil, totalWorkers),
+		Pool:       NewPool(nil, totalWorkers),
 		Data: &TotalData{
 			Blocks:       make([]models.Block, 0, step),
 			Transactions: make([]models.Transaction, 0),
 		},
 		Context: ctx,
-		Cancel: cancel,
+		Cancel:  cancel,
 	}
 }
 
-func (m *Manager) Process(errChan chan *models.TaskErr,
-	dataChan chan *TotalData,
+func (m *Manager) Process(dataChan chan *TotalData,
 	f func(data int64, dataChan chan *TotalData) error) {
 	go m.Pool.RunBackground(m.Context)
+
+	end, err := strconv.ParseInt(os.Getenv("CRAWLER_END_POS"), 10, 64)
+	if err != nil {
+		log.Fatal("error, while getting crawler ending position: ", err)
+	}
+	start, err := strconv.ParseInt(os.Getenv("CRAWLER_START_POS"), 10, 64)
+	if err != nil {
+		log.Fatal("error, while getting crawler starting position: ", err)
+	}
+	totalOps := (end - start) + 1
 
 	for {
 		select {
@@ -64,17 +78,33 @@ func (m *Manager) Process(errChan chan *models.TaskErr,
 			m.Data.Blocks = append(m.Data.Blocks, data.Blocks...)
 			m.Data.Transactions = append(m.Data.Transactions, data.Transactions...)
 			m.Counter++
-			if m.Counter == m.Step {
+			m.Total++
+			if m.Counter == m.Step || m.Total == totalOps {
 				m.ShouldWork = false
 				dataChan <- m.Data
 				for !m.ShouldWork {}
 			}
 		case num := <-m.TaskChan:
-			task := NewTask(num, errChan, m.TDataChan, f)
+			go func() {
+				for i := num.From; i < num.To; i++ {
+					task := NewTask(i, m.ErrChan, m.TDataChan, f)
+					m.Pool.AddTask(task)
+				}
+			}()
+		case err := <-m.ErrChan:
+			log.Println(err.Err)
+			if res, ok := m.ErrHistory[err.ID]; ok {
+				if res == 4 {
+					log.Println("error occurred five times, so we'll skip it")
+					totalOps--
+					continue
+				}
+				m.ErrHistory[err.ID]++
+			} else {
+				m.ErrHistory[err.ID] = 1
+			}
+			task := NewTask(err.ID, m.ErrChan, m.TDataChan, f)
 			m.Pool.AddTask(task)
-		case <-time.After(5 * time.Second):
-			dataChan <- m.Data
-			m.Cancel()
 		case <-m.Context.Done():
 			return
 		}
@@ -87,5 +117,3 @@ func (m *Manager) Reset() {
 	m.Data.Transactions = make([]models.Transaction, 0)
 	m.ShouldWork = true
 }
-
-

@@ -17,7 +17,7 @@ services:
       - TOKEN_TTL=${TOKEN_TTL:-86400}
       - STEP=${STEP:-1000}
       - TOTAL_WORKERS=${TOTAL_WORKERS:-10}
-      - NODE=${NODE:-https://testnet-tezos.giganode.io/chains/main/blocks/}
+      - NODE=${NODE:-https://tezos-arch.everstake.one/chains/main/blocks/}
       - POSTGRES_HOST=${POSTGRES_HOST:-pgdb}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
@@ -28,7 +28,8 @@ services:
       - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8123}
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-blocks}
       - CLICKHOUSE_DEBUG=${CLICKHOUSE_DEBUG:-true}
-      - CRAWLER_START_POS=${CRAWLER_START_POS:-700000}
+      - CRAWLER_START_POS=${CRAWLER_START_POS:-1000}
+      - CRAWLER_END_POS=${CRAWLER_END_POS:-6000000}
     volumes:
       - ./internal/storage/migrations:/migrations
     depends_on:
