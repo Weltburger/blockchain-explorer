@@ -1,0 +1,85 @@
+version: '3.9'
+
+services:
+  explorer:
+    container_name: rest-server
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    networks:
+      - blocknet
+    ports:
+      - "1323:1323"
+    environment:
+      - HTTP_PORT=${HTTP_PORT:-1323}
+      - SIGNING_KEY=${SIGNING_KEY:-strongPassword}
+      - TOKEN_TTL=${TOKEN_TTL:-86400}
+      - STEP=${STEP:-1000}
+      - TOTAL_WORKERS=${TOTAL_WORKERS:-10}
+      - NODE=${NODE:-https://tezos-arch.everstake.one/chains/main/blocks/}
+      - POSTGRES_HOST=${POSTGRES_HOST:-pgdb}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-1234}
+      - POSTGRES_DB=${POSTGRES_DB:-blockchain_explorer}
+      - PGDATA=${POSTGRES_DATA:-/var/lib/postgresql/data/}
+      - CLICKHOUSE_HOST=${CLICKHOUSE_HOST:-chdb}
+      - CLICKHOUSE_PORT=${CLICKHOUSE_PORT:-8123}
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-blocks}
+      - CLICKHOUSE_DEBUG=${CLICKHOUSE_DEBUG:-true}
+      - CRAWLER_START_POS=${CRAWLER_START_POS:-1000}
+      - CRAWLER_END_POS=${CRAWLER_END_POS:-6000000}
+    volumes:
+      - ./internal/storage/migrations:/migrations
+    depends_on:
+      - postgres_db
+      - clickhouse_db
+  postgres_db:
+    container_name: pg_db
+    hostname: pgdb
+    image: postgres:alpine3.15
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=${POSTGRES_HOST_AUTH_METHOD:-trust}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSOWRD:-mysecretpassword}
+      - POSTGRES_DB=${POSTGRES_DB:-blockchain_explorer}
+      - PGDATA=${POSTGRES_DATA:-/var/lib/postgresql/data/}
+    ports:
+      - "5432:5432"
+    restart: on-failure
+    networks:
+      - blocknet
+    volumes:
+      - pgvolume:/var/lib/postgresql/data/
+    command: [ "postgres", "-c", "log_statement=all" ]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres -d blockchain_explorer"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  clickhouse_db:
+    container_name: ch_db
+    hostname: chdb
+    image: yandex/clickhouse-server
+    environment:
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-blocks}
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - chvolume:/var/lib/clickhouse
+    networks:
+      - blocknet
+
+volumes:
+  pgvolume:
+  chvolume:
+networks:
+  blocknet:
+    driver: bridge

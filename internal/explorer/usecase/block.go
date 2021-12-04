@@ -4,6 +4,7 @@ import (
 	"context"
 	"explorer/internal/explorer"
 	"explorer/models"
+	"strconv"
 )
 
 type BlockUseCase struct {
@@ -15,12 +16,21 @@ func NewBlockUseCase(blockRepo explorer.BlockRepo) *BlockUseCase {
 }
 
 func (b *BlockUseCase) GetBlock(ctx context.Context, blk string) (*models.Block, error) {
-	block, err := b.blockRepo.GetBlock(ctx, blk)
+	blkLevel, err := strconv.ParseInt(blk, 10, 64)
+	if err != nil {
+		block, err := b.blockRepo.GetBlockByHash(ctx, blk)
+		if err != nil {
+			return nil, err
+		}
+		return block, nil
+	}
+
+	block, err := b.blockRepo.GetBlockByLevel(ctx, blkLevel)
 	if err != nil {
 		return nil, err
 	}
-
 	return block, nil
+
 }
 
 func (b *BlockUseCase) GetBlocks(ctx context.Context, offset, limit int) ([]models.Block, error) {

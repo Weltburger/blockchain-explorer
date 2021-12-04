@@ -1,20 +1,21 @@
 package workerpool
 
 import (
+	"context"
 	"fmt"
 )
 
 type Worker struct {
 	ID       int
 	taskChan chan *Task
-	quit     chan bool
+	context      context.Context
 }
 
-func NewWorker(channel chan *Task, ID int) *Worker {
+func NewWorker(channel chan *Task, ID int, ctx context.Context) *Worker {
 	return &Worker{
 		ID:       ID,
 		taskChan: channel,
-		quit:     make(chan bool),
+		context:  ctx,
 	}
 }
 
@@ -25,15 +26,9 @@ func (wr *Worker) StartBackground() {
 		select {
 		case task := <-wr.taskChan:
 			process(wr.ID, task)
-		case <-wr.quit:
+		case <-wr.context.Done():
+			fmt.Printf("Closing worker %d\n", wr.ID)
 			return
 		}
 	}
-}
-
-func (wr *Worker) Stop() {
-	fmt.Printf("Closing worker %d\n", wr.ID)
-	go func() {
-		wr.quit <- true
-	}()
 }

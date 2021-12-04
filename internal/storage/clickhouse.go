@@ -3,8 +3,13 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"log"
+	"os"
+
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/clickhouse"
+	"github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/mailru/go-clickhouse"
-	"github.com/spf13/viper"
 )
 
 type ClickhouseDataSource struct {
@@ -12,12 +17,12 @@ type ClickhouseDataSource struct {
 }
 
 func InitClickhouse() (*ClickhouseDataSource, error) {
-	chHost := viper.GetString("clickhouse.ch_host")
-	chPort := viper.GetInt("clickhouse.ch_port")
-	chDB := viper.GetString("clickhouse.ch_db")
-	chDebug := viper.GetString("clickhouse.ch_debug")
+	chHost := os.Getenv("CLICKHOUSE_HOST")
+	chPort := os.Getenv("CLICKHOUSE_PORT")
+	chDB := os.Getenv("CLICKHOUSE_DB")
+	chDebug := os.Getenv("CLICKHOUSE_DEBUG")
 
-	chConnString := fmt.Sprintf("http://%s:%d/%s?debug=%s", chHost, chPort, chDB, chDebug)
+	chConnString := fmt.Sprintf("http://%s:%s/%s?debug=%s", chHost, chPort, chDB, chDebug)
 
 	db, err := sql.Open("clickhouse", chConnString)
 	if err != nil {
@@ -26,6 +31,27 @@ func InitClickhouse() (*ClickhouseDataSource, error) {
 	if err = db.Ping(); err != nil {
 		return nil, err
 	}
+
+	driver, err := clickhouse.WithInstance(db, &clickhouse.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("error create driver for migrate: %v", err)
+	}
+
+	sourceURL, err := (&file.File{}).Open("file://internal/storage/migrations/ch")
+	if err != nil {
+		log.Fatal(err)
+	}
+	m, err := migrate.NewWithInstance(
+		"file", sourceURL,
+		"clickhouse", driver)
+	if err != nil {
+		return nil, fmt.Errorf("error create migrating: %v", err)
+	}
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return nil, err
+	}
+	log.Printf("Clickhouse Migration done\n")
 
 	return &ClickhouseDataSource{DB: db}, nil
 }

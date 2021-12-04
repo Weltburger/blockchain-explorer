@@ -4,8 +4,8 @@ import (
 	"context"
 	"log"
 
+	"explorer/internal/apperrors"
 	"explorer/internal/auth"
-	"explorer/internal/auth/apperrors"
 	"explorer/models"
 
 	"github.com/google/uuid"

@@ -20,6 +20,6 @@ clickhouse:
 
 explorer:
   totalWorkers: 10
-  crawlerStartPos: 678500
+  crawlerStartPos: 700000
   step: 1000
   node: "https://testnet-tezos.giganode.io/chains/main/blocks/"

@@ -1,8 +1,8 @@
 package http
 
 import (
+	"explorer/internal/apperrors"
 	"explorer/internal/auth"
-	"explorer/internal/auth/apperrors"
 	"net/http"
 	"strings"
 

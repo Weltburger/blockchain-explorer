@@ -1,30 +1,25 @@
 package main
 
 import (
-	"explorer/config"
 	"explorer/internal/server"
+	"explorer/internal/server/watcher"
+	"fmt"
 	"github.com/labstack/gommon/log"
-	"github.com/spf13/viper"
+	"os"
 )
 
 func main() {
-
-	err := config.Init()
-	if err != nil {
-		log.Printf("error read config: ", err)
-		return
-	}
 	serv, err := server.NewServer()
 	if err != nil {
-		log.Fatal("error, while initialising server: ", err)
+		log.Fatal("error, while initializing server: ", err)
 		return
 	}
 
 	defer serv.Databases.Clickhouse.DB.Close()
 	defer serv.Databases.Postgres.DB.Close()
 
-	go serv.CheckBlocks()
-	go serv.Crawl(678500)
+	go watcher.CheckBlocks(serv)
+	go watcher.Crawl(serv)
 
-	serv.Router.Logger.Fatal(serv.Router.Start(viper.GetString("address")))
+	serv.Router.Logger.Fatal(serv.Router.Start(fmt.Sprintf(":%s", os.Getenv("HTTP_PORT"))))
 }
