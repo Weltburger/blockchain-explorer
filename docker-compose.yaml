@@ -37,7 +37,7 @@ services:
   postgres_db:
     container_name: pg_db
     hostname: pgdb
-    image: postgres:alpine3.15
+    image: postgres
     environment:
       - POSTGRES_HOST_AUTH_METHOD=${POSTGRES_HOST_AUTH_METHOD:-trust}
       - POSTGRES_PASSWORD=${POSTGRES_PASSOWRD:-mysecretpassword}
@@ -77,8 +77,8 @@ services:
       - blocknet
 
 volumes:
-  pgvolume:
-  chvolume:
+  pgvolume: null
+  chvolume: null
 networks:
   blocknet:
     driver: bridge
