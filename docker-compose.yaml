@@ -76,9 +76,22 @@ services:
     networks:
       - blocknet
 
+  redis:
+    image: "redis:6.2.6-alpine"
+    container_name: redis_db
+    hostname: redisdb
+    command: redis-server --requirepass password
+    ports:
+      - "6379:6379"
+    volumes:
+      - rdvolume:/var/lib/redis
+    #   - $PWD/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - blocknet
 volumes:
   pgvolume: null
   chvolume: null
+  rdvolume: null
 networks:
   blocknet:
     driver: bridge

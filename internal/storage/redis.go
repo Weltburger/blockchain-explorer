@@ -17,11 +17,12 @@ func InitRedis() (*RedisDataSource, error) {
 	// Initialize redis connection
 	redisHost := os.Getenv("REDIS_HOST")
 	redisPort := os.Getenv("REDIS_PORT")
+	redisPass := os.Getenv("REDIS_PASS")
 
 	log.Printf("Connecting to Redis\n")
 	client := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%s", redisHost, redisPort),
-		Password: "",
+		Password: redisPass,
 		DB:       0,
 	})
 
