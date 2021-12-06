@@ -29,11 +29,15 @@ services:
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-blocks}
       - CLICKHOUSE_DEBUG=${CLICKHOUSE_DEBUG:-true}
       - CRAWLER_START_POS=${CRAWLER_START_POS:-700000}
+      - REDIS_HOST=${REDIS_HOST:-redisdb}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-password}
     volumes:
       - ./internal/storage/migrations:/migrations
     depends_on:
       - postgres_db
       - clickhouse_db
+      - redis_db
   postgres_db:
     container_name: pg_db
     hostname: pgdb
@@ -76,7 +80,7 @@ services:
     networks:
       - blocknet
 
-  redis:
+  redis_db:
     image: "redis:6.2.6-alpine"
     container_name: redis_db
     hostname: redisdb
