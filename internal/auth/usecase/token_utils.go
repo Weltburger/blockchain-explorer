@@ -65,7 +65,6 @@ func generateRefreshToken(uid uuid.UUID, key string, exp int64) (*refreshTokenDa
 	currentTime := time.Now()
 	tokenExp := currentTime.Add(time.Duration(exp) * time.Second)
 	tokenID, err := uuid.NewRandom() // v4 uuid in the google uuid lib
-
 	if err != nil {
 		log.Println("Failed to generate refresh token ID")
 		return nil, err

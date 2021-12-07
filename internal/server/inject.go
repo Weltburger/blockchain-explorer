@@ -8,7 +8,6 @@ import (
 	explhttp "explorer/internal/explorer/delivery/http"
 	"explorer/internal/storage"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -41,8 +40,7 @@ func inject() (*Server, error) {
 
 	// load rsa keys
 	privKeyFile := os.Getenv("PRIV_KEY_FILE")
-	priv, err := ioutil.ReadFile(privKeyFile)
-
+	priv, err := os.ReadFile(privKeyFile)
 	if err != nil {
 		return nil, fmt.Errorf("Could not read private key pem file: %w", err)
 	}
@@ -54,7 +52,7 @@ func inject() (*Server, error) {
 	}
 
 	pubKeyFile := os.Getenv("PUB_KEY_FILE")
-	pub, err := ioutil.ReadFile(pubKeyFile)
+	pub, err := os.ReadFile(pubKeyFile)
 
 	if err != nil {
 		return nil, fmt.Errorf("Could not read public key pem file: %w", err)
@@ -91,11 +89,6 @@ func inject() (*Server, error) {
 		IDExpirationSecs:      idExp,
 		RefreshExpirationSecs: refreshExp,
 	})
-
-	// tokenTTL, err := strconv.Atoi(os.Getenv("TOKEN_TTL"))
-	// if err != nil {
-	// 	return nil, err
-	// }
 
 	server := &Server{
 		Router:    echo.New(),

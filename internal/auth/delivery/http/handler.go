@@ -73,10 +73,6 @@ type signInReq struct {
 	Password string `json:"password" validate:"required,min=8,max=50"`
 }
 
-type signInResp struct {
-	Tokens models.TokenPair `json:"tokens"`
-}
-
 // SignIn handler
 func (h *Handler) SignIn(c echo.Context) error {
 	// define a variable to which we'll bind incoming json body
@@ -111,6 +107,6 @@ func (h *Handler) SignIn(c echo.Context) error {
 		return c.JSON(apperrors.Status(err), apperrors.NewAuthorization(err.Error()))
 	}
 
-	return c.JSON(http.StatusOK, signInResp{Tokens: *tokens})
+	return c.JSON(http.StatusOK, *tokens)
 
 }

@@ -13,8 +13,6 @@ services:
       - "1323:1323"
     environment:
       - HTTP_PORT=${HTTP_PORT:-1323}
-      - SIGNING_KEY=${SIGNING_KEY:-strongPassword}
-      - TOKEN_TTL=${TOKEN_TTL:-86400}
       - STEP=${STEP:-1000}
       - TOTAL_WORKERS=${TOTAL_WORKERS:-10}
       - NODE=${NODE:-https://testnet-tezos.giganode.io/chains/main/blocks/}
@@ -31,7 +29,11 @@ services:
       - CRAWLER_START_POS=${CRAWLER_START_POS:-700000}
       - REDIS_HOST=${REDIS_HOST:-redisdb}
       - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-password}
+      - PRIV_KEY_FILE=${PRIV_KEY_FILE:-./rsa_private.pem}
+      - PUB_KEY_FILE=${PUB_KEY_FILE:-./rsa_public.pem}
+      - REFRESH_SECRET=${REFRESH_SECRET:-secret}
+      - REFRESH_TOKEN_EXP=${REFRESH_TOKEN_EXP:-259200}
+      - ID_TOKEN_EXP=${ID_TOKEN_EXP:-900}
     volumes:
       - ./internal/storage/migrations:/migrations
     depends_on:
@@ -84,7 +86,6 @@ services:
     image: "redis:6.2.6-alpine"
     container_name: redis_db
     hostname: redisdb
-    command: redis-server --requirepass password
     ports:
       - "6379:6379"
     volumes:

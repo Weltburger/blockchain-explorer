@@ -27,7 +27,7 @@ type invalidArgument struct {
 func bindData(c echo.Context, req interface{}) bool {
 	// extract request content type
 	h := c.Request().Header
-	if h.Get("ContentType") != "application/json" {
+	if h.Get("Content-Type") != "application/json" {
 		msg := fmt.Sprintf("%s only accepts Content-Type application/json", c.Path())
 
 		err := apperrors.NewUnsupportedMediaType(msg)
