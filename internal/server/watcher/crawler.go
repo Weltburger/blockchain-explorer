@@ -13,49 +13,63 @@ import (
 )
 
 func Crawl(s *server.Server) {
-	startPos, err := strconv.ParseInt(os.Getenv("CRAWLER_START_POS"), 10, 64)
+	wg := &sync.WaitGroup{}
+	dataChan := make(chan *workerpool.TotalData)
+	rangeChan := make(chan models.CrawlRange)
+
+	defer func() {
+		close(dataChan)
+		close(rangeChan)
+	}()
+
+	manager := workerpool.CreateManager(rangeChan)
+
+	wg.Add(1)
+	go func(ctx context.Context) {
+		defer wg.Done()
+		for {
+			select {
+			case data := <-dataChan:
+				saveBlocks(s, data.Blocks...)
+				saveTransactions(s, data.Transactions...)
+				manager.Reset()
+			case <-ctx.Done():
+				return
+			default:
+			}
+		}
+	}(manager.Context)
+
+	go manager.Process(dataChan, processingFunc)
+
+	start, err := strconv.ParseInt(os.Getenv("CRAWLER_START_POS"), 10, 64)
+	if err != nil {
+		log.Fatal("error, while getting crawler start position: ", err)
+		return
+	}
+	end, err := strconv.ParseInt(os.Getenv("CRAWLER_END_POS"), 10, 64)
+	if err != nil {
+		log.Fatal("error, while getting crawler start position: ", err)
+		return
+	}
+	step, err := strconv.ParseInt(os.Getenv("STEP"), 10, 64)
 	if err != nil {
 		log.Fatal("error, while getting crawler start position: ", err)
 		return
 	}
 
-	wg := &sync.WaitGroup{}
-	dataChan := make(chan *workerpool.TotalData)
-	errChan := make(chan *models.TaskErr)
-	numChan := make(chan int64)
-
-	defer func() {
-		close(dataChan)
-		close(errChan)
-		close(numChan)
-	}()
-
-	manager := workerpool.CreateManager(numChan)
-
-	wg.Add(1)
-	go func(ctx context.Context) {
-		defer wg.Done()
-		ForLoop:
-			for {
-				select {
-				case data := <-dataChan:
-					saveBlocks(s, data.Blocks...)
-					saveTransactions(s, data.Transactions...)
-					manager.Reset()
-				case err := <-errChan:
-					log.Println(err.Err)
-					numChan <- err.ID
-				case <-ctx.Done():
-					break ForLoop
-				default:
-				}
-			}
-	}(manager.Context)
-
-	go manager.Process(errChan, dataChan, processingFunc)
-
-	for i := startPos; i >= 0; i-- {
-		numChan <- i
+	if start > end {
+		start, end = end, start
+	}
+	cRange := models.CrawlRange{}
+	for i := start; i <= end; i+=step {
+		cRange.From = i
+		if (i+step) >= end {
+			cRange.To = end + 1
+		} else {
+			cRange.To = i + step
+		}
+		rangeChan <- cRange
 	}
 
 	wg.Wait()
