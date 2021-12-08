@@ -10,50 +10,46 @@ import (
 )
 
 type AuthMiddleware struct {
-	usecase auth.UserUsecase
+	token auth.TokenUsecase
 }
 
-func NewAuthMiddleware(usecase auth.UserUsecase) echo.HandlerFunc {
+func NewAuthMiddleware(t auth.TokenUsecase) echo.HandlerFunc {
 	return (&AuthMiddleware{
-		usecase: usecase,
+		token: t,
 	}).Handle
 }
 
-func (m *AuthMiddleware) Handle(ctx echo.Context) error {
+func (m *AuthMiddleware) Handle(c echo.Context) error {
 
-	authHeader := ctx.Request().Header.Get("Authorization")
+	authHeader := c.Request().Header.Get("Authorization")
 	if authHeader == "" {
-		errJSON := ctx.JSON(http.StatusUnauthorized, apperrors.NewAuthorization("error"))
-		return errJSON
+		return c.JSON(http.StatusUnauthorized, apperrors.NewAuthorization("Header authorization field is empty."))
 	}
 
-	headerParts := strings.Split(authHeader, " ")
+	headerParts := strings.Split(authHeader, "Bearer ")
 	if len(headerParts) != 2 {
-		errJSON := ctx.JSON(http.StatusUnauthorized, apperrors.NewAuthorization("error token format"))
-		return errJSON
+		return c.JSON(http.StatusUnauthorized, apperrors.NewAuthorization("Must provide Authorization header with format `Bearer {token}`"))
 	}
-	if headerParts[0] != "Bearer" {
-		errJSON := ctx.JSON(http.StatusUnauthorized, apperrors.NewAuthorization("didn't find bearer"))
-		return errJSON
+	if strings.Contains(headerParts[0], "Bearer") {
+		return c.JSON(http.StatusUnauthorized, apperrors.NewAuthorization("Didn't find 'Bearer'"))
 	}
 
-	user, err := m.usecase.ParseToken(ctx.Request().Context(), headerParts[1])
+	ctx := c.Request().Context()
+
+	user, err := m.token.ValidateIDToken(ctx, headerParts[1])
 	if err != nil {
-		errJSON := ctx.JSON(http.StatusUnauthorized, apperrors.NewAuthorization(err.Error()))
-		return errJSON
+		return c.JSON(http.StatusUnauthorized, apperrors.NewAuthorization(err.Error()))
 	}
 
-	ctx.Response().Header().Set(auth.CtxUserKey, user.Email)
+	c.Set(auth.CtxUserKey, user)
 
 	return nil
 }
 
 // authorization is the authorization middleware for users.
 // It checks the access_token in the Authorization header or the access_token query parameter
-// On success sets "me" = *User (current logged user) and "accessData" = current access data
-// into the context. Sets even the scopes variable, the sorted slice of scopes in accessData
-func Authorization(userUse auth.UserUsecase) echo.MiddlewareFunc {
+func Authorization(t auth.TokenUsecase) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return NewAuthMiddleware(userUse)
+		return NewAuthMiddleware(t)
 	}
 }

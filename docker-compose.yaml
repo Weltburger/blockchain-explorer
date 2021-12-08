@@ -13,8 +13,6 @@ services:
       - "1323:1323"
     environment:
       - HTTP_PORT=${HTTP_PORT:-1323}
-      - SIGNING_KEY=${SIGNING_KEY:-strongPassword}
-      - TOKEN_TTL=${TOKEN_TTL:-86400}
       - STEP=${STEP:-1000}
       - TOTAL_WORKERS=${TOTAL_WORKERS:-10}
       - NODE=${NODE:-https://tezos-arch.everstake.one/chains/main/blocks/}
@@ -30,15 +28,23 @@ services:
       - CLICKHOUSE_DEBUG=${CLICKHOUSE_DEBUG:-true}
       - CRAWLER_START_POS=${CRAWLER_START_POS:-1000}
       - CRAWLER_END_POS=${CRAWLER_END_POS:-6000000}
+      - REDIS_HOST=${REDIS_HOST:-redisdb}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - PRIV_KEY_FILE=${PRIV_KEY_FILE:-./rsa_private.pem}
+      - PUB_KEY_FILE=${PUB_KEY_FILE:-./rsa_public.pem}
+      - REFRESH_SECRET=${REFRESH_SECRET:-secret}
+      - REFRESH_TOKEN_EXP=${REFRESH_TOKEN_EXP:-259200}
+      - ID_TOKEN_EXP=${ID_TOKEN_EXP:-900}
     volumes:
       - ./internal/storage/migrations:/migrations
     depends_on:
       - postgres_db
       - clickhouse_db
+      - redis_db
   postgres_db:
     container_name: pg_db
     hostname: pgdb
-    image: postgres:alpine3.15
+    image: postgres
     environment:
       - POSTGRES_HOST_AUTH_METHOD=${POSTGRES_HOST_AUTH_METHOD:-trust}
       - POSTGRES_PASSWORD=${POSTGRES_PASSOWRD:-mysecretpassword}
@@ -77,9 +83,21 @@ services:
     networks:
       - blocknet
 
+  redis_db:
+    image: "redis:6.2.6-alpine"
+    container_name: redis_db
+    hostname: redisdb
+    ports:
+      - "6379:6379"
+    volumes:
+      - rdvolume:/var/lib/redis
+    #   - $PWD/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - blocknet
 volumes:
-  pgvolume:
-  chvolume:
+  pgvolume: null
+  chvolume: null
+  rdvolume: null
 networks:
   blocknet:
     driver: bridge
