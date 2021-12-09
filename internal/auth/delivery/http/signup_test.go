@@ -47,7 +47,7 @@ func TestSignUp(t *testing.T) {
 		e.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
-		mockUC.AssertNotCalled(t, "SignUp")
+		mockUC.AssertNotCalled(t, "SignUp", mock.Anything)
 	})
 
 	t.Run("Invalid Email", func(t *testing.T) {
@@ -72,7 +72,7 @@ func TestSignUp(t *testing.T) {
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 
-		mockUC.AssertNotCalled(t, "SignUp")
+		mockUC.AssertNotCalled(t, "SignUp", mock.Anything)
 	})
 
 	t.Run("Password too shot", func(t *testing.T) {
@@ -97,7 +97,7 @@ func TestSignUp(t *testing.T) {
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 
-		mockUC.AssertNotCalled(t, "SignUp")
+		mockUC.AssertNotCalled(t, "SignUp", mock.Anything)
 	})
 
 	t.Run("Invalid header Content-Type", func(t *testing.T) {
@@ -122,7 +122,7 @@ func TestSignUp(t *testing.T) {
 
 		assert.Equal(t, http.StatusUnsupportedMediaType, w.Code)
 
-		mockUC.AssertNotCalled(t, "SignUp")
+		mockUC.AssertNotCalled(t, "SignUp", mock.Anything)
 	})
 
 	t.Run("Invalid JSON body format", func(t *testing.T) {
@@ -139,7 +139,7 @@ func TestSignUp(t *testing.T) {
 		e.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		mockUC.AssertNotCalled(t, "SignUp")
+		mockUC.AssertNotCalled(t, "SignUp", mock.Anything)
 	})
 
 	t.Run("Error returned from UserUsecase", func(t *testing.T) {

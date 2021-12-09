@@ -37,7 +37,7 @@ func (u *UserCase) SignUp(ctx context.Context, usr *models.User) error {
 func (u *UserCase) SignIn(ctx context.Context, usr *models.User) error {
 	user, err := u.userRepo.GetByEmail(ctx, usr.Email)
 	if err != nil {
-		return apperrors.NewNotFound("username", usr.Email)
+		return apperrors.NewNotFound("email", usr.Email)
 	}
 
 	// verify password
