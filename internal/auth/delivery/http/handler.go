@@ -32,9 +32,9 @@ func NewHandler(c *Config) *Handler {
 }
 
 type signUpReq struct {
-	Email           string `json:"email" validate:"required,email"`
-	Password        string `json:"password" validate:"required,min=8,max=50"`
-	ConfirmPassword string `json:"confirm_password" validate:"required,min=8,max=50,eqcsfield=Password"`
+	Email           string `json:"email,omitempty" validate:"required,email"`
+	Password        string `json:"password,omitempty" validate:"required,min=8,max=50"`
+	ConfirmPassword string `json:"confirm_password,omitempty" validate:"required,min=8,max=50,eqcsfield=Password"`
 }
 
 // SignUp handler
@@ -60,7 +60,8 @@ func (h *Handler) SignUp(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	if err := h.UserUseCase.SignUp(ctx, u); err != nil {
-		return c.JSON(http.StatusInternalServerError, apperrors.NewInternal())
+		appErr := err.(*apperrors.Error)
+		return c.JSON(apperrors.Status(err), appErr)
 
 	}
 

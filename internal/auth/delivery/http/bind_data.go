@@ -39,42 +39,36 @@ func bindData(c echo.Context, req interface{}) bool {
 	if err := c.Bind(req); err != nil {
 		log.Printf("Error binding data: %+v\n", err)
 
-		if errs, ok := err.(validator.ValidationErrors); ok {
-			// could probably extract this, it is also in middleware_auth_user
-			var invalidArgs []invalidArgument
+		// if errs, ok := err.(validator.ValidationErrors); ok {
+		// 	// could probably extract this, it is also in middleware_auth_user
+		// 	var invalidArgs []invalidArgument
 
-			for _, err := range errs {
-				invalidArgs = append(invalidArgs, invalidArgument{
-					err.Field(),
-					err.Value().(string),
-					err.Tag(),
-					err.Param(),
-				})
-			}
+		// 	for _, err := range errs {
+		// 		invalidArgs = append(invalidArgs, invalidArgument{
+		// 			err.Field(),
+		// 			err.Value().(string),
+		// 			err.Tag(),
+		// 			err.Param(),
+		// 		})
+		// 	}
 
-			err := apperrors.NewBadRequest("Invalid request parameters.")
+		// 	err := apperrors.NewBadRequest("Invalid request parameters.")
 
-			c.JSON(err.Status(), bindError{
-				Error:     err,
-				Arguments: invalidArgs,
-			})
-			return false
-		}
+		// 	c.JSON(err.Status(), bindError{
+		// 		Error:     err,
+		// 		Arguments: invalidArgs,
+		// 	})
+		// 	return false
+		// }
 
 		//return an internal server error
-		fallBack := apperrors.NewInternal()
+		bindError := apperrors.NewInternal()
 
-		c.JSON(fallBack.Status(), fallBack)
+		c.JSON(bindError.Status(), bindError)
 		return false
 	}
 
 	return true
-}
-
-// validateError
-type validateError struct {
-	Error     *apperrors.Error  `json:"error"`
-	Arguments []invalidArgument `json:"invalidArguments"`
 }
 
 // validateData is helper function, returns false if data is not valid to requirements
@@ -98,10 +92,9 @@ func validData(ctx echo.Context, req interface{}) bool {
 
 		err := apperrors.NewBadRequest("Parameters validation error.")
 
-		ctx.JSON(err.Status(), validateError{
-			Error:     err,
-			Arguments: invalidArgs,
-		})
+		ctx.JSON(err.Status(), map[string]interface{}{
+			"error":            err,
+			"invalidArguments": invalidArgs})
 		return false
 	}
 

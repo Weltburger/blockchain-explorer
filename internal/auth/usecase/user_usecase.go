@@ -12,7 +12,7 @@ type UserCase struct {
 	userRepo auth.UserRepo
 }
 
-func NewUserUseCase(userRepo auth.UserRepo) auth.UserUsecase {
+func NewUserCase(userRepo auth.UserRepo) auth.UserUsecase {
 	return &UserCase{
 		userRepo: userRepo,
 	}
@@ -22,7 +22,7 @@ func (u *UserCase) SignUp(ctx context.Context, usr *models.User) error {
 	// hash user password
 	pwd, err := hashPassword(usr.Password)
 	if err != nil {
-		return err
+		return apperrors.NewInternal()
 	}
 
 	user := &models.User{
