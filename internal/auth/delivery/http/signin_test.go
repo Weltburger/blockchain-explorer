@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"explorer/internal/apperrors"
-	"explorer/internal/auth/usecase/mocks"
 	"explorer/models"
+	"explorer/models/mocks"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"

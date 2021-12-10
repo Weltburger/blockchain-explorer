@@ -3,6 +3,8 @@ package auth
 import (
 	"context"
 	"explorer/models"
+
+	"github.com/google/uuid"
 )
 
 const CtxUserKey = "user"
@@ -12,7 +14,7 @@ const CtxUserKey = "user"
 type UserUsecase interface {
 	SignUp(ctx context.Context, u *models.User) error
 	SignIn(ctx context.Context, u *models.User) error
-	// ParseToken(ctx context.Context, accessToken string) (*models.User, error)
+	Get(ctx context.Context, uid uuid.UUID) (*models.User, error)
 }
 
 // TokenService defines methods the handler layer expects to interact
