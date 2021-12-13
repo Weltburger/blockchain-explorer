@@ -58,3 +58,7 @@
 !.vscode/*.code-snippets
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,go,linux
+rsa_public_.pem
+rsa_private_.pem
+rsa_private.pem
+rsa_public.pem

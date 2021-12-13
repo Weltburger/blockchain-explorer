@@ -17,7 +17,11 @@ func hashPassword(password string) (string, error) {
 
 // Check if two passwords match using Bcrypt's CompareHashAndPassword
 // which return nil on success and an error on failure.
-func doPasswordsMatch(hashedPassword, currentPassword string) bool {
+func doPasswordsMatch(hashedPassword, currentPassword string) (bool, error) {
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(currentPassword))
-	return err == nil
+	if err != nil {
+		return false, err
+	} else {
+		return true, nil
+	}
 }

@@ -3,6 +3,7 @@ package storage
 type DataSources struct {
 	Postgres   *PostgresDataSource
 	Clickhouse *ClickhouseDataSource
+	Redis      *RedisDataSource
 }
 
 func InitDataSources() (*DataSources, error) {
@@ -16,8 +17,14 @@ func InitDataSources() (*DataSources, error) {
 		return nil, err
 	}
 
+	redis, err := InitRedis()
+	if err != nil {
+		return nil, err
+	}
+
 	return &DataSources{
 		Postgres:   postgres,
 		Clickhouse: clickhouse,
+		Redis:      redis,
 	}, nil
 }
