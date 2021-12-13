@@ -36,7 +36,7 @@ func inject() (*Server, error) {
 	/*
 	 * service layer
 	 */
-	userUC := usecase.NewUserUseCase(userRepo)
+	userUC := usecase.NewUserCase(userRepo)
 
 	// load rsa keys
 	privKeyFile := os.Getenv("PRIV_KEY_FILE")

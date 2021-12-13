@@ -32,9 +32,9 @@ func NewHandler(c *Config) *Handler {
 }
 
 type signUpReq struct {
-	Email           string `json:"email" validate:"required,email"`
-	Password        string `json:"password" validate:"required,min=8,max=50"`
-	ConfirmPassword string `json:"confirm_password" validate:"required,min=8,max=50,eqcsfield=Password"`
+	Email           string `json:"email,omitempty" validate:"required,email"`
+	Password        string `json:"password,omitempty" validate:"required,min=8,max=50"`
+	ConfirmPassword string `json:"confirm_password,omitempty" validate:"required,min=8,max=50,eqcsfield=Password"`
 }
 
 // SignUp handler
@@ -43,12 +43,12 @@ func (h *Handler) SignUp(c echo.Context) error {
 	req := new(signUpReq)
 
 	// Bind incoming json to struct and check for validation errors
-	if ok := bindData(c, req); !ok {
+	if ok, err := bindData(c, req); !ok || err != nil {
 		return errors.New("error bind data")
 	}
 
 	// validate input fields format and security requirements
-	if ok := validData(c, req); !ok {
+	if ok, err := validData(c, req); !ok || err != nil {
 		return errors.New("error validate data")
 	}
 
@@ -60,7 +60,8 @@ func (h *Handler) SignUp(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	if err := h.UserUseCase.SignUp(ctx, u); err != nil {
-		return c.JSON(http.StatusInternalServerError, apperrors.NewInternal())
+		appErr := err.(*apperrors.Error)
+		return c.JSON(apperrors.Status(err), appErr)
 
 	}
 
@@ -79,12 +80,12 @@ func (h *Handler) SignIn(c echo.Context) error {
 	req := new(signInReq)
 
 	// Bind incoming json to struct and check for validation errors
-	if ok := bindData(c, req); !ok {
+	if ok, err := bindData(c, req); !ok || err != nil {
 		return errors.New("error bind data")
 	}
 
 	// validate input fields format and security requirements
-	if ok := validData(c, req); !ok {
+	if ok, err := validData(c, req); !ok || err != nil {
 		return errors.New("error validate data")
 	}
 
@@ -97,14 +98,15 @@ func (h *Handler) SignIn(c echo.Context) error {
 
 	err := h.UserUseCase.SignIn(ctx, u)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, apperrors.NewInternal())
+		signError := err.(*apperrors.Error)
+		return c.JSON(signError.Status(), signError)
 	}
 
 	tokens, err := h.TokenUseCase.NewPairTokens(ctx, u, "")
 	if err != nil {
 		log.Printf("Failed to create tokens for user: %v\n", err.Error())
-
-		return c.JSON(apperrors.Status(err), apperrors.NewAuthorization(err.Error()))
+		tokenError := err.(*apperrors.Error)
+		return c.JSON(tokenError.Status(), tokenError)
 	}
 
 	return c.JSON(http.StatusOK, *tokens)

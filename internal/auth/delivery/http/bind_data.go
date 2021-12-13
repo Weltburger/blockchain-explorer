@@ -10,12 +10,6 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type bindError struct {
-	Error     *apperrors.Error  `json:"error"`
-	Arguments []invalidArgument `json:"invalidArguments"`
-}
-
-// used to help extract validation errors
 type invalidArgument struct {
 	Field string `json:"field"`
 	Value string `json:"value"`
@@ -24,61 +18,29 @@ type invalidArgument struct {
 }
 
 // bindData is helper function, returns false if data is not bound
-func bindData(c echo.Context, req interface{}) bool {
+func bindData(c echo.Context, req interface{}) (bool, error) {
 	// extract request content type
 	h := c.Request().Header
 	if h.Get("Content-Type") != "application/json" {
 		msg := fmt.Sprintf("%s only accepts Content-Type application/json", c.Path())
-
 		err := apperrors.NewUnsupportedMediaType(msg)
 
-		c.JSON(err.Status(), err)
-		return false
+		return false, c.JSON(err.Status(), err)
 	}
 	// Bind incoming json to struct and check for validation errors
 	if err := c.Bind(req); err != nil {
 		log.Printf("Error binding data: %+v\n", err)
 
-		if errs, ok := err.(validator.ValidationErrors); ok {
-			// could probably extract this, it is also in middleware_auth_user
-			var invalidArgs []invalidArgument
-
-			for _, err := range errs {
-				invalidArgs = append(invalidArgs, invalidArgument{
-					err.Field(),
-					err.Value().(string),
-					err.Tag(),
-					err.Param(),
-				})
-			}
-
-			err := apperrors.NewBadRequest("Invalid request parameters.")
-
-			c.JSON(err.Status(), bindError{
-				Error:     err,
-				Arguments: invalidArgs,
-			})
-			return false
-		}
-
 		//return an internal server error
-		fallBack := apperrors.NewInternal()
-
-		c.JSON(fallBack.Status(), fallBack)
-		return false
+		bindError := apperrors.NewInternal()
+		return false, c.JSON(bindError.Status(), bindError)
 	}
 
-	return true
-}
-
-// validateError
-type validateError struct {
-	Error     *apperrors.Error  `json:"error"`
-	Arguments []invalidArgument `json:"invalidArguments"`
+	return true, nil
 }
 
 // validateData is helper function, returns false if data is not valid to requirements
-func validData(ctx echo.Context, req interface{}) bool {
+func validData(ctx echo.Context, req interface{}) (bool, error) {
 	// define receive data validator
 	validate := validator.New()
 
@@ -98,12 +60,10 @@ func validData(ctx echo.Context, req interface{}) bool {
 
 		err := apperrors.NewBadRequest("Parameters validation error.")
 
-		ctx.JSON(err.Status(), validateError{
-			Error:     err,
-			Arguments: invalidArgs,
-		})
-		return false
+		return false, ctx.JSON(err.Status(), map[string]interface{}{
+			"error":            err,
+			"invalidArguments": invalidArgs})
 	}
 
-	return true
+	return true, nil
 }
