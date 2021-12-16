@@ -98,6 +98,7 @@ func (m *Manager) Process(dataChan chan *TotalData,
 			if res, ok := m.ErrHistory[err.ID]; ok {
 				if res == 4 {
 					log.Println("error occurred five times, so we'll skip it")
+					m.Counter++
 					totalOps--
 					continue
 				}
