@@ -71,12 +71,12 @@ func inject() (*Server, error) {
 	idTokenExp := os.Getenv("ID_TOKEN_EXP")
 	refreshTokenExp := os.Getenv("REFRESH_TOKEN_EXP")
 
-	idExp, err := strconv.ParseInt(idTokenExp, 0, 64)
+	idExp, err := strconv.ParseInt(idTokenExp, 10, 64)
 	if err != nil {
 		return nil, fmt.Errorf("Could not parse ID_TOKEN_EXP as int: %w", err)
 	}
 
-	refreshExp, err := strconv.ParseInt(refreshTokenExp, 0, 64)
+	refreshExp, err := strconv.ParseInt(refreshTokenExp, 10, 64)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse REFRESH_TOKEN_EXP as int: %w", err)
 	}
