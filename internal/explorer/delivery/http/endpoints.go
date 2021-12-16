@@ -8,7 +8,7 @@ import (
 )
 
 func RegisterEndpoints(router *echo.Echo, db *sql.DB) {
-	endpoints := router.Group("/api/v1")
+	endpoints := router.Group("/v1")
 	{
 		endpoints.GET("/blocks", NewBlockHandler(usecase.NewBlockUseCase(clickhouse.NewBlockRepository(db))).GetBlocks)
 		endpoints.GET("/block/:block", NewBlockHandler(usecase.NewBlockUseCase(clickhouse.NewBlockRepository(db))).GetBlock)
