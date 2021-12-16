@@ -116,7 +116,7 @@ func inject() (*Server, error) {
 
 	// register explorer endpoints
 	explhttp.RegisterEndpoints(api, ds.Clickhouse.DB)
-	
+
 	api.Use(authhttp.Authorization(server.TokenUC))
 
 

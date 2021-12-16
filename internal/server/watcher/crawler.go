@@ -90,6 +90,10 @@ func processingFunc(data int64, dataChan chan *workerpool.TotalData) error {
 		}
 
 		if block.Hash != "" {
+			if block.Metadata.LevelInfo.Level == 0 {
+				block.Metadata.LevelInfo = block.Metadata.Level
+			}
+			
 			transactions := GetTransactions(&block)
 
 			td := &workerpool.TotalData{

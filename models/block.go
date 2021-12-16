@@ -36,6 +36,7 @@ type Header struct {
 type BlockMetadata struct {
 	Baker                     string                     `json:"baker"`
 	LevelInfo                 LevelInfo                  `json:"level_info"`
+	Level                     LevelInfo                  `json:"level"`
 	ConsumedGas               string                     `json:"consumed_gas"`
 }
 
