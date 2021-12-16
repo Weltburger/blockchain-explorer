@@ -7,7 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func RegisterEndpoints(router *echo.Echo, db *sql.DB) {
+func RegisterEndpoints(router *echo.Group, db *sql.DB) {
 	endpoints := router.Group("/v1")
 	{
 		endpoints.GET("/blocks", NewBlockHandler(usecase.NewBlockUseCase(clickhouse.NewBlockRepository(db))).GetBlocks)
