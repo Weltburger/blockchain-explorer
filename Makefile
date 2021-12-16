@@ -1,26 +1,31 @@
 PWD = $(shell pwd)
 MPATH = $(PWD)/internal/auth/migrations
 
+create-keypair:
+	@echo "Creating an rsa 256 key pair"
+	openssl genpkey -algorithm RSA -out $(PWD)/rsa_private_$(ENV).pem -pkeyopt rsa_keygen_bits:2048
+	openssl rsa -in $(PWD)/rsa_private_$(ENV).pem -pubout -out $(PWD)/rsa_public_$(ENV).pem
+
 migrate-create:
-@echo "---Creating migration files---"
-migrate create -ext sql -dir $(MPATH) -digits 3 -seq $(NAME)
+	@echo "---Creating migration files---"
+	migrate create -ext sql -dir $(MPATH) -digits 3 -seq $(NAME)
 
 postgres:
-docker run --rm --name postgres_block-explorer --network host -e POSTGRES_USER=root -e POSTGRES_PASSWORD=password -d postgres
+	docker run --rm --name postgres_block-explorer --network host -e POSTGRES_USER=root -e POSTGRES_PASSWORD=password -d postgres
 
 createdb:
-docker exec -it postgres_block-explorer createdb --username=root --owner=root blockchain_explorer
+	docker exec -it postgres_block-explorer createdb --username=root --owner=root blockchain_explorer
 
 dropdb:
-docker exec -it postgres_block-explorer dropdb blockchain_explorer
+	docker exec -it postgres_block-explorer dropdb blockchain_explorer
 
 migrate-up:
-migrate -path $(MPATH) -database "postgresql://root:password@localhost:5432/blockchain_explorer?sslmode=disable" -verbose up
+	migrate -path $(MPATH) -database "postgresql://root:password@localhost:5432/blockchain_explorer?sslmode=disable" -verbose up
 
 migrate-down:
-migrate -path $(MPATH) -database "postgresql://root:password@localhost:5432/blockchain_explorer?sslmode=disable" -verbose down
+	migrate -path $(MPATH) -database "postgresql://root:password@localhost:5432/blockchain_explorer?sslmode=disable" -verbose down
 
-.PHONY: postgres createdb dropdb migrate-up migrate-down
+.PHONY: postgres createdb dropdb migrate-up migrate-down migrate-create create-keypair
 
 
 #docker run -d --name pg_db --hostname pgdb --network blockchainnet -p 5432:5432 -e POSTGRES_USER=root -e POSTGRES_PASSWORD=password -e PGDATA=/var/lib/postgresql/data/pgdata -e POSTGRES_DB=blockchain_explorer -v pgvolume:/var/lib/postgresql/data postgres

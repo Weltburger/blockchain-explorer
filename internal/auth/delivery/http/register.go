@@ -1,14 +1,11 @@
 package http
 
 import (
-	"explorer/internal/auth"
-
-	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 )
 
-func RegisterEndpoints(router *echo.Group, uc auth.UserUsecase, v *validator.Validate) {
-	h := NewHandler(uc, v)
+func RegisterEndpoints(router *echo.Group, conf Config) {
+	h := NewHandler(&conf)
 
 	authEndpoints := router.Group("/auth")
 	{

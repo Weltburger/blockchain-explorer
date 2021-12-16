@@ -9,12 +9,13 @@ import (
 type Type string
 
 const (
-	Authorization      Type = "AUTHORIZATION"       // Authentication Failures -
-	BadRequest         Type = "BAD_REQUEST"         // Validation errors / BadInput
-	Conflict           Type = "CONFLICT"            // Already exists (eg, create account with existent email) - 409
-	Internal           Type = "INTERNAL"            // Server (500) and fallback errors
-	NotFound           Type = "NOT_FOUND"           // For not finding resource
-	ServiceUnavailable Type = "SERVICE_UNAVAILABLE" // For long running handlers
+	Authorization        Type = "AUTHORIZATION"          // Authentication Failures -
+	BadRequest           Type = "BAD_REQUEST"            // Validation errors / BadInput
+	Conflict             Type = "CONFLICT"               // Already exists (eg, create account with existent email) - 409
+	Internal             Type = "INTERNAL"               // Server (500) and fallback errors
+	NotFound             Type = "NOT_FOUND"              // For not finding resource
+	ServiceUnavailable   Type = "SERVICE_UNAVAILABLE"    // For long running handlers
+	UnsupportedMediaType Type = "UNSUPPORTED_MEDIA_TYPE" // for http 415
 )
 
 type Error struct {
@@ -40,6 +41,8 @@ func (e *Error) Status() int {
 		return http.StatusNotFound
 	case ServiceUnavailable:
 		return http.StatusServiceUnavailable
+	case UnsupportedMediaType:
+		return http.StatusUnsupportedMediaType
 	default:
 		return http.StatusInternalServerError
 	}
@@ -92,5 +95,13 @@ func NewServiceUnavailable() *Error {
 	return &Error{
 		Type:    ServiceUnavailable,
 		Message: "Service unavailable or timed out",
+	}
+}
+
+// NewUnsupportedMediaType to create an error for 415
+func NewUnsupportedMediaType(reason string) *Error {
+	return &Error{
+		Type:    UnsupportedMediaType,
+		Message: reason,
 	}
 }

@@ -1,93 +1,114 @@
 package http
 
 import (
+	"errors"
 	"explorer/internal/apperrors"
 	"explorer/internal/auth"
+	"explorer/models"
+	"fmt"
+	"log"
 	"net/http"
-	"strings"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 )
 
 type Handler struct {
-	useCase  auth.UserUsecase
-	validate *validator.Validate
+	UserUseCase  auth.UserUsecase
+	TokenUseCase auth.TokenUsecase
 }
 
-func NewHandler(useCase auth.UserUsecase, v *validator.Validate) *Handler {
+// Config will hold services that will eventually be injected into this
+// handler layer on handler initialization
+type Config struct {
+	UserUsecase  auth.UserUsecase
+	TokenUsecase auth.TokenUsecase
+}
+
+func NewHandler(c *Config) *Handler {
 	return &Handler{
-		useCase:  useCase,
-		validate: v,
+		UserUseCase:  c.UserUsecase,
+		TokenUseCase: c.TokenUsecase,
 	}
 }
 
-type signUpData struct {
-	Email           string `json:"email" validate:"required,email"`
-	Password        string `json:"password" validate:"required,min=8,max=50"`
-	ConfirmPassword string `json:"confirm_password" validate:"required,min=8,max=50,eqcsfield=Password"`
+type signUpReq struct {
+	Email           string `json:"email,omitempty" validate:"required,email"`
+	Password        string `json:"password,omitempty" validate:"required,min=8,max=50"`
+	ConfirmPassword string `json:"confirm_password,omitempty" validate:"required,min=8,max=50,eqcsfield=Password"`
 }
 
-func (h *Handler) SignUp(ctx echo.Context) error {
-	input := new(signUpData)
+// SignUp handler
+func (h *Handler) SignUp(c echo.Context) error {
+	// define a variable to which we'll bind incoming json body
+	req := new(signUpReq)
 
-	if err := ctx.Bind(input); err != nil {
-		errJSON := ctx.JSON(http.StatusBadRequest, apperrors.NewBadRequest(err.Error()))
-		return errJSON
+	// Bind incoming json to struct and check for validation errors
+	if ok, err := bindData(c, req); !ok || err != nil {
+		return errors.New("error bind data")
 	}
 
-	// validate input data
-	if err := h.validate.Struct(input); err != nil {
-		errValidator := make([]string, 0, 3)
-		for _, e := range err.(validator.ValidationErrors) {
-			errValidator = append(errValidator, strings.Split(e.Error(), "Error:")[1])
-		}
-		errJSON := ctx.JSON(http.StatusBadRequest, apperrors.NewBadRequest(strings.Join(errValidator, " --> ")))
-		return errJSON
+	// validate input fields format and security requirements
+	if ok, err := validData(c, req); !ok || err != nil {
+		return errors.New("error validate data")
 	}
 
-	if err := h.useCase.SignUp(ctx.Request().Context(), input.Email, input.Password); err != nil {
-		errJSON := ctx.JSON(http.StatusInternalServerError, apperrors.NewInternal())
-		return errJSON
+	u := &models.User{
+		Email:    req.Email,
+		Password: req.Password,
 	}
 
-	errJSON := ctx.JSON(http.StatusOK, "OK")
-	return errJSON
+	ctx := c.Request().Context()
+
+	if err := h.UserUseCase.SignUp(ctx, u); err != nil {
+		appErr := err.(*apperrors.Error)
+		return c.JSON(apperrors.Status(err), appErr)
+
+	}
+
+	return c.String(http.StatusOK, fmt.Sprintf("Account %s successfully created! Approve your email and Signin!", req.Email))
+
 }
 
-type signInData struct {
+type signInReq struct {
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required,min=8,max=50"`
 }
 
-type signInResponse struct {
-	Token string `json:"token"`
-}
+// SignIn handler
+func (h *Handler) SignIn(c echo.Context) error {
+	// define a variable to which we'll bind incoming json body
+	req := new(signInReq)
 
-func (h *Handler) SignIn(ctx echo.Context) error {
-	input := new(signInData)
-
-	if err := ctx.Bind(input); err != nil {
-		errJSON := ctx.JSON(http.StatusBadRequest, apperrors.NewBadRequest(err.Error()))
-		return errJSON
+	// Bind incoming json to struct and check for validation errors
+	if ok, err := bindData(c, req); !ok || err != nil {
+		return errors.New("error bind data")
 	}
 
-	// validate input data
-	if err := h.validate.Struct(input); err != nil {
-		errValidator := make([]string, 0, 2)
-		for _, e := range err.(validator.ValidationErrors) {
-			errValidator = append(errValidator, strings.Split(e.Error(), "Error:")[1])
-		}
-		errJSON := ctx.JSON(http.StatusBadRequest, apperrors.NewBadRequest(strings.Join(errValidator, " --> ")))
-		return errJSON
+	// validate input fields format and security requirements
+	if ok, err := validData(c, req); !ok || err != nil {
+		return errors.New("error validate data")
 	}
 
-	token, err := h.useCase.SignIn(ctx.Request().Context(), input.Email, input.Password)
+	u := &models.User{
+		Email:    req.Email,
+		Password: req.Password,
+	}
+
+	ctx := c.Request().Context()
+
+	err := h.UserUseCase.SignIn(ctx, u)
 	if err != nil {
-		errJSON := ctx.JSON(http.StatusInternalServerError, apperrors.NewInternal())
-		return errJSON
+		signError := err.(*apperrors.Error)
+		return c.JSON(signError.Status(), signError)
 	}
 
-	errJSON := ctx.JSON(http.StatusOK, signInResponse{Token: token})
-	return errJSON
+	tokens, err := h.TokenUseCase.NewPairTokens(ctx, u, "")
+	if err != nil {
+		log.Printf("Failed to create tokens for user: %v\n", err.Error())
+		tokenError := err.(*apperrors.Error)
+		return c.JSON(tokenError.Status(), tokenError)
+	}
+
+	return c.JSON(http.StatusOK, *tokens)
+
 }

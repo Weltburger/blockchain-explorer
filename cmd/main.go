@@ -4,11 +4,13 @@ import (
 	"explorer/internal/server"
 	"explorer/internal/server/watcher"
 	"fmt"
-	"github.com/labstack/gommon/log"
 	"os"
+
+	"github.com/labstack/gommon/log"
 )
 
 func main() {
+
 	serv, err := server.NewServer()
 	if err != nil {
 		log.Fatal("error, while initializing server: ", err)
@@ -17,6 +19,7 @@ func main() {
 
 	defer serv.Databases.Clickhouse.DB.Close()
 	defer serv.Databases.Postgres.DB.Close()
+	defer serv.Databases.Redis.Close()
 
 	go watcher.CheckBlocks(serv)
 	go watcher.Crawl(serv)
