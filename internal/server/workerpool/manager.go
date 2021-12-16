@@ -17,6 +17,7 @@ type Manager struct {
 	ErrChan    chan *models.TaskErr
 	ErrHistory map[int64]int
 	ShouldWork bool
+	OuterQueue bool
 	Pool       *Pool
 	Data       *TotalData
 	Context    context.Context
@@ -48,6 +49,7 @@ func CreateManager(ch <-chan models.CrawlRange) *Manager {
 		ErrChan:    make(chan *models.TaskErr),
 		ErrHistory: map[int64]int{},
 		ShouldWork: true,
+		OuterQueue: false,
 		Pool:       NewPool(nil, totalWorkers),
 		Data: &TotalData{
 			Blocks:       make([]models.Block, 0, step),
@@ -116,4 +118,5 @@ func (m *Manager) Reset() {
 	m.Data.Blocks = make([]models.Block, 0, m.Step)
 	m.Data.Transactions = make([]models.Transaction, 0)
 	m.ShouldWork = true
+	m.OuterQueue = false
 }
