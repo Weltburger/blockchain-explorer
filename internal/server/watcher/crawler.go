@@ -62,14 +62,20 @@ func Crawl(s *server.Server) {
 		start, end = end, start
 	}
 	cRange := models.CrawlRange{}
-	for i := start; i <= end; i+=step {
+	for i := start; i <= end; {
+		if manager.OuterQueue {
+			continue
+		}
 		cRange.From = i
-		if (i+step) >= end {
+		if (i+step) > end {
 			cRange.To = end + 1
 		} else {
 			cRange.To = i + step
 		}
 		rangeChan <- cRange
+
+		i+=step
+		manager.OuterQueue = true
 	}
 
 	wg.Wait()
