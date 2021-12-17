@@ -109,17 +109,15 @@ func inject() (*Server, error) {
 		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
 	}))
 
-	api := server.Router.Group("/api")
+	api := server.Router.Group("/api/v1")
 
 	// register auth endpoints
 	authhttp.RegisterEndpoints(api, authhttp.Config{UserUsecase: server.UserUC, TokenUsecase: server.TokenUC})
 
 	// register explorer endpoints
-	explhttp.RegisterEndpoints(api, ds.Clickhouse.DB)
+	explhttp.RegisterEndpoints(api, ds.Clickhouse.DB, authhttp.Authorization(server.TokenUC))
 
-	api.Use(authhttp.Authorization(server.TokenUC))
-
-
+	// api.Use(authhttp.Authorization(server.TokenUC))
 
 	return server, nil
 }

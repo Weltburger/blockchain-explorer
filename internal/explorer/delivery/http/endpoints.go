@@ -4,11 +4,12 @@ import (
 	"database/sql"
 	"explorer/internal/explorer/repository/clickhouse"
 	"explorer/internal/explorer/usecase"
+
 	"github.com/labstack/echo/v4"
 )
 
-func RegisterEndpoints(router *echo.Group, db *sql.DB) {
-	endpoints := router.Group("/v1")
+func RegisterEndpoints(router *echo.Group, db *sql.DB, authMiddleware echo.MiddlewareFunc) {
+	endpoints := router.Group("/auth", authMiddleware)
 	{
 		endpoints.GET("/blocks", NewBlockHandler(usecase.NewBlockUseCase(clickhouse.NewBlockRepository(db))).GetBlocks)
 		endpoints.GET("/block/:block", NewBlockHandler(usecase.NewBlockUseCase(clickhouse.NewBlockRepository(db))).GetBlock)

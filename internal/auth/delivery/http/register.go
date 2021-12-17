@@ -7,10 +7,10 @@ import (
 func RegisterEndpoints(router *echo.Group, conf Config) {
 	h := NewHandler(&conf)
 
-	authEndpoints := router.Group("/auth")
+	// authEndpoints := router.Group("/auth")
 	{
-		authEndpoints.POST("/sign-up", h.SignUp)
-		authEndpoints.POST("/sign-in", h.SignIn)
+		router.POST("/sign-up", h.SignUp)
+		router.POST("/sign-in", h.SignIn)
 	}
 
 }
