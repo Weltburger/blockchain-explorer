@@ -110,10 +110,12 @@ func inject() (*Server, error) {
 	}))
 
 	api := server.Router.Group("/api")
-	api.Use(authhttp.Authorization(server.TokenUC))
 
 	// register auth endpoints
 	authhttp.RegisterEndpoints(api, authhttp.Config{UserUsecase: server.UserUC, TokenUsecase: server.TokenUC})
+
+	// set middleware
+	api.Use(authhttp.Authorization(server.TokenUC))
 
 	// register explorer endpoints
 	explhttp.RegisterEndpoints(api, ds.Clickhouse.DB)

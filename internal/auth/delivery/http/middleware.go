@@ -11,11 +11,13 @@ import (
 
 type AuthMiddleware struct {
 	token auth.TokenUsecase
+	next  echo.HandlerFunc
 }
 
-func NewAuthMiddleware(t auth.TokenUsecase) echo.HandlerFunc {
+func NewAuthMiddleware(t auth.TokenUsecase, next echo.HandlerFunc) echo.HandlerFunc {
 	return (&AuthMiddleware{
 		token: t,
+		next: next,
 	}).Handle
 }
 
@@ -43,13 +45,13 @@ func (m *AuthMiddleware) Handle(c echo.Context) error {
 
 	c.Set(auth.CtxUserKey, user)
 
-	return nil
+	return m.next(c)
 }
 
 // authorization is the authorization middleware for users.
 // It checks the access_token in the Authorization header or the access_token query parameter
 func Authorization(t auth.TokenUsecase) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return NewAuthMiddleware(t)
+		return NewAuthMiddleware(t, next)
 	}
 }
