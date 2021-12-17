@@ -114,8 +114,9 @@ func inject() (*Server, error) {
 	// register auth endpoints
 	authhttp.RegisterEndpoints(api, authhttp.Config{UserUsecase: server.UserUC, TokenUsecase: server.TokenUC})
 
+	m := authhttp.NewAuthMiddleware(server.TokenUC)
 	// register explorer endpoints
-	explhttp.RegisterEndpoints(api, ds.Clickhouse.DB, authhttp.Authorization(server.TokenUC))
+	explhttp.RegisterEndpoints(api, ds.Clickhouse.DB, m.ServeAuth)
 
 	// api.Use(authhttp.Authorization(server.TokenUC))
 
