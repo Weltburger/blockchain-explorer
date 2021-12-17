@@ -84,29 +84,25 @@ func Crawl(s *server.Server) {
 func processingFunc(data int64, dataChan chan *workerpool.TotalData) error {
 	blockID := data
 	for {
-		block, err := GetData(&http.Client{}, strconv.FormatInt(blockID, 10))
+		block, err := GetData(&http.Client{}, strconv.FormatInt(blockID, 10), -1)
 		if err != nil {
 			return err
 		}
 
-		if block.Hash != "" {
-			if block.Metadata.LevelInfo.Level == 0 {
-				block.Metadata.LevelInfo = block.Metadata.Level
-			}
-
-			transactions := GetTransactions(&block)
-
-			td := &workerpool.TotalData{
-				Blocks:       []models.Block{block},
-				Transactions: transactions,
-			}
-
-			go func() {
-				dataChan <- td
-			}()
-		} else {
-			continue
+		if block.Metadata.LevelInfo.Level == 0 {
+			block.Metadata.LevelInfo = block.Metadata.Level
 		}
+
+		transactions := GetTransactions(&block)
+
+		td := &workerpool.TotalData{
+			Blocks:       []models.Block{block},
+			Transactions: transactions,
+		}
+
+		go func() {
+			dataChan <- td
+		}()
 
 		return nil
 	}

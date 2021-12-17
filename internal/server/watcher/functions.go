@@ -10,27 +10,42 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 )
 
 type Getter interface {
 	Get(url string) (*http.Response, error)
 }
 
-func GetData(getter Getter, index string) (models.Block, error) {
-	url := fmt.Sprintf(fmt.Sprintf("%s%s", os.Getenv("NODE"), index))
-	resp, err := getter.Get(url)
-	if err != nil {
-		return models.Block{}, err
-	}
+func GetData(getter Getter, index string, prevPos int64) (models.Block, error) {
+	var (
+		resp *http.Response
+		err error
+		block models.Block
+	)
+	for {
+		url := fmt.Sprintf(fmt.Sprintf("%s%s", os.Getenv("NODE"), index))
+		resp, err = getter.Get(url)
+		if err != nil {
+			return models.Block{}, err
+		}
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return models.Block{}, err
-	}
-	defer resp.Body.Close()
-	block, _ := models.UnmarshalBlock(body)
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return models.Block{}, err
+		}
+		block, _ = models.UnmarshalBlock(body)
 
-	return block, nil
+		if block.Hash == "" {
+			continue
+		} else if block.Metadata.LevelInfo.Level == prevPos {
+			time.Sleep(time.Second * 5)
+			continue
+		} else {
+			return block, nil
+		}
+	}
 }
 
 func saveAllData(s *server.Server, blocks ...models.Block) error {
