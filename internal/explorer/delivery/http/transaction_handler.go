@@ -17,6 +17,17 @@ func NewTransHandler(transUseCase explorer.TransUseCase) *TransHandler {
 	}
 }
 
+// @Summary GetTransactions
+// @Security ApiKeyAuth
+// @Tags transactions
+// @Description Get transactions with limit and offset params
+// @ID get-transactions
+// @Produce  json
+// @Success 200 {array} models.Transaction
+// @Failure 404 {string} string "error"
+// @Param limit  query int false "the amount of transactions you want to get"
+// @Param offset query int false "offset from the beginning of the data in database"
+// @Router /v1/transactions [get]
 func (h *TransHandler) GetTransactions(c echo.Context) error {
 	blk := c.QueryParam("block")
 	acc := c.QueryParam("account")
@@ -27,7 +38,7 @@ func (h *TransHandler) GetTransactions(c echo.Context) error {
 		limit = 1
 	}
 	offset, err := strconv.Atoi(c.QueryParam("offset"))
-	if err != nil  || offset < 0{
+	if err != nil || offset < 0 {
 		offset = 0
 	}
 

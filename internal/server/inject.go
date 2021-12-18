@@ -8,6 +8,7 @@ import (
 	explhttp "explorer/internal/explorer/delivery/http"
 	"explorer/internal/storage"
 	"fmt"
+	echoSwagger "github.com/swaggo/echo-swagger"
 	"log"
 	"net/http"
 	"os"
@@ -17,6 +18,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	echolog "github.com/labstack/gommon/log"
+
+	_ "github.com/swaggo/echo-swagger/example/docs"
 )
 
 func inject() (*Server, error) {
@@ -119,6 +122,8 @@ func inject() (*Server, error) {
 
 	// register explorer endpoints
 	explhttp.RegisterEndpoints(api, ds.Clickhouse.DB)
+
+	server.Router.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	return server, nil
 }
