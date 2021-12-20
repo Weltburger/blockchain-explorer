@@ -297,6 +297,9 @@ host: localhost
 info:
   contact: {}
   description: This is a service that allows you to receive data stored in the blockchain.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
   title: Blockchain Explorer
   version: 0.9.1
 paths:

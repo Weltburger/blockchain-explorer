@@ -16,9 +16,9 @@ import (
 // @host localhost
 // @BasePath /api
 
-// @securityDefinitions.apiKey ApiKeyAuth
+// @securityDefinitions.apikey ApiKeyAuth
 // @in header
-// @name Authorization
+// @name Authorization (Bearer token)
 func main() {
 
 	serv, err := server.NewServer()
@@ -32,7 +32,7 @@ func main() {
 	defer serv.Databases.Redis.Close()
 
 	go watcher.CheckBlocks(serv)
-	//go watcher.Crawl(serv)
+	go watcher.Crawl(serv)
 
 	serv.Router.Logger.Fatal(serv.Router.Start(fmt.Sprintf(":%s", os.Getenv("HTTP_PORT"))))
 }

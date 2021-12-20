@@ -19,7 +19,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	echolog "github.com/labstack/gommon/log"
 
-	_ "github.com/swaggo/echo-swagger/example/docs"
+	_ "explorer/docs"
 )
 
 func inject() (*Server, error) {
@@ -112,6 +112,8 @@ func inject() (*Server, error) {
 		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
 	}))
 
+	server.Router.GET("/swagger/*", echoSwagger.WrapHandler)
+
 	api := server.Router.Group("/api")
 
 	// register auth endpoints
@@ -122,8 +124,6 @@ func inject() (*Server, error) {
 
 	// register explorer endpoints
 	explhttp.RegisterEndpoints(api, ds.Clickhouse.DB)
-
-	server.Router.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	return server, nil
 }
