@@ -13,3 +13,7 @@ type BlockUseCase interface {
 type TransUseCase interface {
 	GetTransactions(ctx context.Context, offset, limit int, blk, hash, acc string) ([]models.Transaction, error)
 }
+
+type TransMIUseCase interface {
+	GetTransactions(ctx context.Context, offset, limit int, blk, hash, acc string) ([]models.TransactionMainInfo, error)
+}

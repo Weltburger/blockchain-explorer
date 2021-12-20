@@ -22,4 +22,5 @@ explorer:
   totalWorkers: 10
   crawlerStartPos: 700000
   step: 1000
+  contract: "KT1HbQepzV1nVGg8QVznG7z4RcHseD5kwqBn"
   node: "https://testnet-tezos.giganode.io/chains/main/blocks/"

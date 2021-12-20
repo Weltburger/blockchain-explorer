@@ -5,6 +5,7 @@ import (
 	"explorer/internal/server"
 	"explorer/models"
 	"fmt"
+	"github.com/spf13/viper"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -119,8 +120,8 @@ func saveTransactions(s *server.Server, transactions ...models.Transaction) erro
 	return nil
 }
 
-func saveTransactionsFromBlocks(s *server.Server, blocks ...models.Block) error {
-	trRepo := clickhouse.NewTransRepository(s.Databases.Clickhouse.DB)
+func saveTransactionsMI(s *server.Server, transactions ...models.TransactionMainInfo) error {
+	trRepo := clickhouse.NewTransMIRepository(s.Databases.Clickhouse.DB)
 	err := trRepo.PrepareTransactionTx()
 	if err != nil {
 		return err
@@ -128,10 +129,46 @@ func saveTransactionsFromBlocks(s *server.Server, blocks ...models.Block) error 
 
 	defer trRepo.Tx.Rollback()
 
+	for _, transaction := range transactions {
+		err := trRepo.Exc(&transaction)
+		if err != nil {
+			return err
+		}
+	}
+	err = trRepo.Cmt()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func saveTransactionsFromBlocks(s *server.Server, blocks ...models.Block) error {
+	trRepo := clickhouse.NewTransRepository(s.Databases.Clickhouse.DB)
+	trMIRepo := clickhouse.NewTransMIRepository(s.Databases.Clickhouse.DB)
+
+	err := trRepo.PrepareTransactionTx()
+	if err != nil {
+		return err
+	}
+
+	err = trMIRepo.PrepareTransactionTx()
+	if err != nil {
+		return err
+	}
+
+	defer trRepo.Tx.Rollback()
+
 	for _, block := range blocks {
-		transactions := GetTransactions(&block)
+		transactions, transactionsMI := GetTransactions(&block)
 		for _, tr := range transactions {
 			err := trRepo.SaveTransaction(&tr)
+			if err != nil {
+				return err
+			}
+		}
+		for _, tr := range transactionsMI {
+			err := trMIRepo.SaveTransaction(&tr)
 			if err != nil {
 				return err
 			}
@@ -145,14 +182,16 @@ func saveTransactionsFromBlocks(s *server.Server, blocks ...models.Block) error 
 	return nil
 }
 
-func GetTransactions(block *models.Block) []models.Transaction {
-	transaction := new(models.Transaction)
+func GetTransactions(block *models.Block) ([]models.Transaction, []models.TransactionMainInfo) {
+	transaction := models.Transaction{}
 	transactions := make([]models.Transaction, 0)
+	transactionMI := models.TransactionMainInfo{}
+	transactionsMI := make([]models.TransactionMainInfo, 0)
 	var opsLength int
 
 	if len(block.Operations) > 2 {
 		if opsLength = len(block.Operations[3]); opsLength == 0 {
-			return nil
+			return nil, nil
 		}
 
 		for i := 0; i < opsLength; i++ {
@@ -169,12 +208,22 @@ func GetTransactions(block *models.Block) []models.Transaction {
 				transaction.ConsumedMilligas = block.Operations[3][i].Contents[j].Metadata.OperationResult.ConsumedMilligas
 				transaction.StorageSize = block.Operations[3][i].Contents[j].Metadata.OperationResult.StorageSize
 				transaction.Signature = block.Operations[3][i].Signature
+				transactions = append(transactions, transaction)
 
-				transactions = append(transactions, *transaction)
+				if transaction.Source == viper.GetString("explorer.contract") ||
+					transaction.Destination == viper.GetString("explorer.contract") {
+					transactionMI.BlockHash = transaction.BlockHash
+					transactionMI.Hash = transaction.Hash
+					transactionMI.Source = transaction.Source
+					transactionMI.Destination = transaction.Destination
+					transactionMI.Fee = transaction.Fee
+					transactionMI.Amount = transaction.Amount
+					transactionsMI = append(transactionsMI, transactionMI)
+				}
 			}
 		}
 	}
 
-	return transactions
+	return transactions, transactionsMI
 }
 

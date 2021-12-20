@@ -14,5 +14,6 @@ func RegisterEndpoints(router *echo.Group, db *sql.DB) {
 		endpoints.GET("/block/:block", NewBlockHandler(usecase.NewBlockUseCase(clickhouse.NewBlockRepository(db))).GetBlock)
 
 		endpoints.GET("/transactions", NewTransHandler(clickhouse.NewTransRepository(db)).GetTransactions)
+		endpoints.GET("/transactions-main-info", NewTransMIHandler(clickhouse.NewTransMIRepository(db)).GetTransactionsMI)
 	}
 }

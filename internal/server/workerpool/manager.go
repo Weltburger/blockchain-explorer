@@ -25,8 +25,9 @@ type Manager struct {
 }
 
 type TotalData struct {
-	Blocks       []models.Block
-	Transactions []models.Transaction
+	Blocks         []models.Block
+	Transactions   []models.Transaction
+	TransactionsMI []models.TransactionMainInfo
 }
 
 func CreateManager(ch <-chan models.CrawlRange) *Manager {
@@ -54,6 +55,7 @@ func CreateManager(ch <-chan models.CrawlRange) *Manager {
 		Data: &TotalData{
 			Blocks:       make([]models.Block, 0, step),
 			Transactions: make([]models.Transaction, 0),
+			TransactionsMI: make([]models.TransactionMainInfo, 0),
 		},
 		Context: ctx,
 		Cancel:  cancel,
@@ -79,12 +81,14 @@ func (m *Manager) Process(dataChan chan *TotalData,
 		case data := <-m.TDataChan:
 			m.Data.Blocks = append(m.Data.Blocks, data.Blocks...)
 			m.Data.Transactions = append(m.Data.Transactions, data.Transactions...)
+			m.Data.TransactionsMI = append(m.Data.TransactionsMI, data.TransactionsMI...)
 			m.Counter++
 			m.Total++
 			if m.Counter == m.Step || m.Total == totalOps {
 				m.ShouldWork = false
 				dataChan <- m.Data
-				for !m.ShouldWork {}
+				for !m.ShouldWork {
+				}
 			}
 		case num := <-m.TaskChan:
 			go func() {
@@ -118,6 +122,7 @@ func (m *Manager) Reset() {
 	m.Counter = 0
 	m.Data.Blocks = make([]models.Block, 0, m.Step)
 	m.Data.Transactions = make([]models.Transaction, 0)
+	m.Data.TransactionsMI = make([]models.TransactionMainInfo, 0)
 	m.ShouldWork = true
 	m.OuterQueue = false
 }
