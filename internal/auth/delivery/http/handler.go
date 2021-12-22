@@ -5,7 +5,6 @@ import (
 	"explorer/internal/apperrors"
 	"explorer/internal/auth"
 	"explorer/models"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -37,6 +36,19 @@ type signUpReq struct {
 	ConfirmPassword string `json:"confirm_password,omitempty" validate:"required,min=8,max=50,eqcsfield=Password"`
 }
 
+// @Summary SignUp
+// @Tags auth
+// @Description Register user at service
+// @Accept  json
+// @Produce  json
+// @ID sign-up
+// @Param email body string true "user login"
+// @Param password body string true "user password"
+// @Param confirm_password body string true "confirm user password"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} apperrors
+// @Router /api/v1/sign-up [post]
+
 // SignUp handler
 func (h *Handler) SignUp(c echo.Context) error {
 	// define a variable to which we'll bind incoming json body
@@ -44,12 +56,14 @@ func (h *Handler) SignUp(c echo.Context) error {
 
 	// Bind incoming json to struct and check for validation errors
 	if ok, err := bindData(c, req); !ok || err != nil {
-		return errors.New("error bind data")
+		bindError := apperrors.NewBadRequest(err.Error())
+		return c.JSON(bindError.Status(), bindError)
 	}
 
 	// validate input fields format and security requirements
 	if ok, err := validData(c, req); !ok || err != nil {
-		return errors.New("error validate data")
+		validError := apperrors.NewBadRequest(err.Error())
+		return c.JSON(validError.Status(), validError)
 	}
 
 	u := &models.User{
@@ -65,7 +79,10 @@ func (h *Handler) SignUp(c echo.Context) error {
 
 	}
 
-	return c.String(http.StatusOK, fmt.Sprintf("Account %s successfully created! Approve your email and Signin!", req.Email))
+	return c.JSON(http.StatusOK, map[string]string{
+		"type":    "SUCCESSES",
+		"message": "Account successfully created!",
+	})
 
 }
 
