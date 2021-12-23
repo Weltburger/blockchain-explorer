@@ -1,5 +1,12 @@
 basePath: /api
 definitions:
+  apperrors.Error:
+    properties:
+      message:
+        type: string
+      type:
+        type: string
+    type: object
   models.Arg:
     properties:
       args:
@@ -254,6 +261,13 @@ definitions:
       prim:
         type: string
     type: object
+  models.TokenPair:
+    properties:
+      idToken:
+        type: string
+      refreshToken:
+        type: string
+    type: object
   models.Transaction:
     properties:
       amount:
@@ -297,12 +311,107 @@ host: localhost
 info:
   contact: {}
   description: This is a service that allows you to receive data stored in the blockchain.
-  license:
-    name: Apache 2.0
-    url: http://www.apache.org/licenses/LICENSE-2.0.html
   title: Blockchain Explorer
   version: 0.9.1
 paths:
+  /api/auth/sign-ip:
+    post:
+      consumes:
+      - application/json
+      description: Authorize user in the service
+      operationId: sign-in
+      parameters:
+      - description: user login
+        in: body
+        name: email
+        required: true
+        schema:
+          type: string
+      - description: user password
+        in: body
+        name: password
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TokenPair'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+      summary: SignIn
+      tags:
+      - auth
+  /api/auth/sign-up:
+    post:
+      consumes:
+      - application/json
+      description: Register user in the service
+      operationId: sign-up
+      parameters:
+      - description: user email/login
+        in: body
+        name: email
+        required: true
+        schema:
+          type: string
+      - description: user password
+        in: body
+        name: password
+        required: true
+        schema:
+          type: string
+      - description: confirm user password
+        in: body
+        name: confirm_password
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+      summary: SignUp
+      tags:
+      - auth
   /v1/block/{block}:
     get:
       description: Get block by hash or id
@@ -394,6 +503,6 @@ paths:
 securityDefinitions:
   ApiKeyAuth:
     in: header
-    name: Authorization
+    name: Authorization (Bearer token)
     type: apiKey
 swagger: "2.0"

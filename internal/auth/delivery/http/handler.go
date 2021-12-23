@@ -1,7 +1,6 @@
 package http
 
 import (
-	"errors"
 	"explorer/internal/apperrors"
 	"explorer/internal/auth"
 	"explorer/models"
@@ -38,18 +37,18 @@ type signUpReq struct {
 
 // @Summary SignUp
 // @Tags auth
-// @Description Register user at service
+// @Description Register user in the service
 // @Accept  json
 // @Produce  json
 // @ID sign-up
-// @Param email body string true "user login"
+// @Param email body string true "user email/login"
 // @Param password body string true "user password"
 // @Param confirm_password body string true "confirm user password"
 // @Success 200 {object} map[string]string
-// @Failure 400 {object} apperrors
-// @Router /api/v1/sign-up [post]
-
-// SignUp handler
+// @Failure 400 {object} apperrors.Error
+// @Failure 409 {object} apperrors.Error
+// @Failure 500 {object} apperrors.Error
+// @Router /api/auth/sign-up [post]
 func (h *Handler) SignUp(c echo.Context) error {
 	// define a variable to which we'll bind incoming json body
 	req := new(signUpReq)
@@ -75,7 +74,7 @@ func (h *Handler) SignUp(c echo.Context) error {
 
 	if err := h.UserUseCase.SignUp(ctx, u); err != nil {
 		appErr := err.(*apperrors.Error)
-		return c.JSON(apperrors.Status(err), appErr)
+		return c.JSON(appErr.Status(), appErr)
 
 	}
 
@@ -91,19 +90,35 @@ type signInReq struct {
 	Password string `json:"password" validate:"required,min=8,max=50"`
 }
 
-// SignIn handler
+// @Summary SignIn
+// @Tags auth
+// @Description Authorize user in the service
+// @Accept  json
+// @Produce  json
+// @ID sign-in
+// @Param email body string true "user login"
+// @Param password body string true "user password"
+// @Success 200 {object} models.TokenPair
+// @Failure 400 {object} apperrors.Error
+// @Failure 401 {object} apperrors.Error
+// @Failure 404 {object} apperrors.Error
+// @Failure 409 {object} apperrors.Error
+// @Failure 500 {object} apperrors.Error
+// @Router /api/auth/sign-ip [post]
 func (h *Handler) SignIn(c echo.Context) error {
 	// define a variable to which we'll bind incoming json body
 	req := new(signInReq)
 
 	// Bind incoming json to struct and check for validation errors
 	if ok, err := bindData(c, req); !ok || err != nil {
-		return errors.New("error bind data")
+		bindError := apperrors.NewBadRequest(err.Error())
+		return c.JSON(bindError.Status(), bindError)
 	}
 
 	// validate input fields format and security requirements
 	if ok, err := validData(c, req); !ok || err != nil {
-		return errors.New("error validate data")
+		validError := apperrors.NewBadRequest(err.Error())
+		return c.JSON(validError.Status(), validError)
 	}
 
 	u := &models.User{
