@@ -1,0 +1,508 @@
+basePath: /api
+definitions:
+  apperrors.Error:
+    properties:
+      message:
+        type: string
+      type:
+        type: string
+    type: object
+  models.Arg:
+    properties:
+      args:
+        items:
+          $ref: '#/definitions/models.Value'
+        type: array
+      bytes:
+        type: string
+      int:
+        type: string
+      prim:
+        type: string
+    type: object
+  models.BigMapDiff:
+    properties:
+      action:
+        type: string
+      big_map:
+        type: string
+      key:
+        $ref: '#/definitions/models.Value'
+      key_hash:
+        type: string
+    type: object
+  models.Block:
+    properties:
+      chain_id:
+        type: string
+      hash:
+        type: string
+      header:
+        $ref: '#/definitions/models.Header'
+      metadata:
+        $ref: '#/definitions/models.BlockMetadata'
+      operations:
+        items:
+          items:
+            $ref: '#/definitions/models.Operation'
+          type: array
+        type: array
+      protocol:
+        type: string
+    type: object
+  models.BlockMetadata:
+    properties:
+      baker:
+        type: string
+      consumed_gas:
+        type: string
+      level:
+        $ref: '#/definitions/models.LevelInfo'
+      level_info:
+        $ref: '#/definitions/models.LevelInfo'
+    type: object
+  models.Content:
+    properties:
+      amount:
+        type: string
+      counter:
+        type: string
+      destination:
+        type: string
+      fee:
+        type: string
+      gas_limit:
+        type: string
+      kind:
+        type: string
+      metadata:
+        $ref: '#/definitions/models.Metadata'
+      parameters:
+        $ref: '#/definitions/models.Parameters'
+      source:
+        type: string
+      storage_limit:
+        type: string
+    type: object
+  models.Diff:
+    properties:
+      action:
+        type: string
+      updates:
+        items:
+          $ref: '#/definitions/models.Update'
+        type: array
+    type: object
+  models.Header:
+    properties:
+      baker_fee:
+        type: integer
+      fitness:
+        items:
+          type: string
+        type: array
+      operations_hash:
+        type: string
+      predecessor:
+        type: string
+      priority:
+        type: integer
+      proto:
+        type: integer
+      signature:
+        type: string
+      timestamp:
+        type: string
+      validation_pass:
+        type: integer
+    type: object
+  models.InternalOperationResult:
+    properties:
+      amount:
+        type: string
+      destination:
+        type: string
+      kind:
+        type: string
+      nonce:
+        type: integer
+      result:
+        $ref: '#/definitions/models.Result'
+      source:
+        type: string
+    type: object
+  models.LazyStorageDiff:
+    properties:
+      diff:
+        $ref: '#/definitions/models.Diff'
+      id:
+        type: string
+      kind:
+        type: string
+    type: object
+  models.LevelInfo:
+    properties:
+      cycle:
+        type: integer
+      cycle_position:
+        type: integer
+      level:
+        type: integer
+    type: object
+  models.Metadata:
+    properties:
+      balance_updates:
+        items:
+          $ref: '#/definitions/models.MetadataBalanceUpdate'
+        type: array
+      internal_operation_results:
+        items:
+          $ref: '#/definitions/models.InternalOperationResult'
+        type: array
+      operation_result:
+        $ref: '#/definitions/models.OperationResult'
+    type: object
+  models.MetadataBalanceUpdate:
+    properties:
+      category:
+        type: string
+      change:
+        type: string
+      contract:
+        type: string
+      cycle:
+        type: integer
+      delegate:
+        type: string
+      kind:
+        type: string
+      origin:
+        type: string
+    type: object
+  models.Operation:
+    properties:
+      branch:
+        type: string
+      chain_id:
+        type: string
+      contents:
+        items:
+          $ref: '#/definitions/models.Content'
+        type: array
+      hash:
+        type: string
+      protocol:
+        type: string
+      signature:
+        type: string
+    type: object
+  models.OperationResult:
+    properties:
+      big_map_diff:
+        items:
+          $ref: '#/definitions/models.BigMapDiff'
+        type: array
+      consumed_gas:
+        type: string
+      consumed_milligas:
+        type: string
+      lazy_storage_diff:
+        items:
+          $ref: '#/definitions/models.LazyStorageDiff'
+        type: array
+      status:
+        type: string
+      storage:
+        items:
+          $ref: '#/definitions/models.Storage'
+        type: array
+      storage_size:
+        type: string
+    type: object
+  models.Parameters:
+    properties:
+      entrypoint:
+        type: string
+      value:
+        $ref: '#/definitions/models.Value'
+    type: object
+  models.Result:
+    properties:
+      balance_updates:
+        items:
+          $ref: '#/definitions/models.ResultBalanceUpdate'
+        type: array
+      consumed_gas:
+        type: string
+      consumed_milligas:
+        type: string
+      status:
+        type: string
+    type: object
+  models.ResultBalanceUpdate:
+    properties:
+      change:
+        type: string
+      contract:
+        type: string
+      kind:
+        type: string
+      origin:
+        type: string
+    type: object
+  models.Storage:
+    properties:
+      args:
+        items:
+          $ref: '#/definitions/models.Arg'
+        type: array
+      int:
+        type: string
+      prim:
+        type: string
+    type: object
+  models.TokenPair:
+    properties:
+      idToken:
+        type: string
+      refreshToken:
+        type: string
+    type: object
+  models.Transaction:
+    properties:
+      amount:
+        type: string
+      block_hash:
+        type: string
+      branch:
+        type: string
+      consumed_milligas:
+        type: string
+      counter:
+        type: string
+      destination:
+        type: string
+      fee:
+        type: string
+      gas_limit:
+        type: string
+      hash:
+        type: string
+      signature:
+        type: string
+      source:
+        type: string
+      storage_size:
+        type: string
+    type: object
+  models.Update:
+    properties:
+      key:
+        $ref: '#/definitions/models.Value'
+      key_hash:
+        type: string
+    type: object
+  models.Value:
+    properties:
+      int:
+        type: string
+    type: object
+host: localhost
+info:
+  contact: {}
+  description: This is a service that allows you to receive data stored in the blockchain.
+  title: Blockchain Explorer
+  version: 0.9.1
+paths:
+  /api/auth/sign-ip:
+    post:
+      consumes:
+      - application/json
+      description: Authorize user in the service
+      operationId: sign-in
+      parameters:
+      - description: user login
+        in: body
+        name: email
+        required: true
+        schema:
+          type: string
+      - description: user password
+        in: body
+        name: password
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TokenPair'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+      summary: SignIn
+      tags:
+      - auth
+  /api/auth/sign-up:
+    post:
+      consumes:
+      - application/json
+      description: Register user in the service
+      operationId: sign-up
+      parameters:
+      - description: user email/login
+        in: body
+        name: email
+        required: true
+        schema:
+          type: string
+      - description: user password
+        in: body
+        name: password
+        required: true
+        schema:
+          type: string
+      - description: confirm user password
+        in: body
+        name: confirm_password
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+      summary: SignUp
+      tags:
+      - auth
+  /v1/block/{block}:
+    get:
+      description: Get block by hash or id
+      operationId: get-block
+      parameters:
+      - description: Block id or hash
+        in: path
+        name: block
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Block'
+        "404":
+          description: error
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: GetBlock
+      tags:
+      - blocks
+  /v1/blocks:
+    get:
+      description: Get blocks with limit and offset
+      operationId: get-blocks
+      parameters:
+      - description: the amount of blocks you want to get
+        in: query
+        name: limit
+        type: integer
+      - description: offset from the beginning of the data in database
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Block'
+            type: array
+        "404":
+          description: error
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: GetBlocks
+      tags:
+      - blocks
+  /v1/transactions:
+    get:
+      description: Get transactions with limit and offset params
+      operationId: get-transactions
+      parameters:
+      - description: the amount of transactions you want to get
+        in: query
+        name: limit
+        type: integer
+      - description: offset from the beginning of the data in database
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Transaction'
+            type: array
+        "404":
+          description: error
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: GetTransactions
+      tags:
+      - transactions
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization (Bearer token)
+    type: apiKey
+swagger: "2.0"

@@ -32,6 +32,7 @@ func Crawl(s *server.Server) {
 			case data := <-dataChan:
 				saveBlocks(s, data.Blocks...)
 				saveTransactions(s, data.Transactions...)
+				saveTransactionsMI(s, data.TransactionsMI...)
 				manager.Reset()
 			case <-ctx.Done():
 				return
@@ -93,11 +94,12 @@ func processingFunc(data int64, dataChan chan *workerpool.TotalData) error {
 			block.Metadata.LevelInfo = block.Metadata.Level
 		}
 
-		transactions := GetTransactions(&block)
+		transactions, transactionsMI := GetTransactions(&block)
 
 		td := &workerpool.TotalData{
 			Blocks:       []models.Block{block},
 			Transactions: transactions,
+			TransactionsMI: transactionsMI,
 		}
 
 		go func() {

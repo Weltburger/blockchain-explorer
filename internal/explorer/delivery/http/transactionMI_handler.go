@@ -7,31 +7,31 @@ import (
 	"strconv"
 )
 
-type TransHandler struct {
-	transUseCase explorer.TransUseCase
+type TransMIHandler struct {
+	transUseCase explorer.TransMIUseCase
 }
 
-func NewTransHandler(transUseCase explorer.TransUseCase) *TransHandler {
-	return &TransHandler{
-		transUseCase: transUseCase,
+func NewTransMIHandler(transMIUseCase explorer.TransMIUseCase) *TransMIHandler {
+	return &TransMIHandler{
+		transUseCase: transMIUseCase,
 	}
 }
 
-// @Summary GetTransactions
+// @Summary GetTransactionsMI
 // @Security ApiKeyAuth
-// @Tags transactions
-// @Description Get transactions with limit and offset params
-// @ID get-transactions
+// @Tags transactions-main-info
+// @Description Get transactions main info with limit and offset params (transactions related to hen)
+// @ID get-transactions-main-info
 // @Produce  json
-// @Success 200 {array} models.Transaction
+// @Success 200 {array} models.TransactionMainInfo
 // @Failure 404 {string} string "error"
 // @Param limit  query int false "the amount of transactions you want to get"
 // @Param offset query int false "offset from the beginning of the data in database"
 // @Param block query string false "specifying a block"
 // @Param account query string false "specifying an address of account (src or dst)"
 // @Param hash query string false "specifying the transaction hash"
-// @Router /v1/transactions [get]
-func (h *TransHandler) GetTransactions(c echo.Context) error {
+// @Router /v1/transactions-main-info [get]
+func (h *TransMIHandler) GetTransactionsMI(c echo.Context) error {
 	blk := c.QueryParam("block")
 	acc := c.QueryParam("account")
 	hash := c.QueryParam("hash")
@@ -41,7 +41,7 @@ func (h *TransHandler) GetTransactions(c echo.Context) error {
 		limit = 1
 	}
 	offset, err := strconv.Atoi(c.QueryParam("offset"))
-	if err != nil || offset < 0 {
+	if err != nil  || offset < 0{
 		offset = 0
 	}
 

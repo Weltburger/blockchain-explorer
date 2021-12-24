@@ -8,6 +8,7 @@ import (
 	explhttp "explorer/internal/explorer/delivery/http"
 	"explorer/internal/storage"
 	"fmt"
+	echoSwagger "github.com/swaggo/echo-swagger"
 	"log"
 	"net/http"
 	"os"
@@ -17,6 +18,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	echolog "github.com/labstack/gommon/log"
+
+	_ "explorer/docs"
 )
 
 func inject() (*Server, error) {
@@ -108,6 +111,8 @@ func inject() (*Server, error) {
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
 	}))
+
+	server.Router.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	api := server.Router.Group("/api")
 

@@ -9,6 +9,16 @@ import (
 	"github.com/labstack/gommon/log"
 )
 
+// @title Blockchain Explorer
+// @version 0.9.1
+// @description This is a service that allows you to receive data stored in the blockchain.
+
+// @host localhost
+// @BasePath /api
+
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization (Bearer token)
 func main() {
 
 	serv, err := server.NewServer()
