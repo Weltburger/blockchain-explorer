@@ -4,10 +4,14 @@ import (
 	"context"
 	"crypto/rsa"
 	"log"
+	"time"
 
 	"explorer/internal/apperrors"
 	"explorer/internal/auth"
 	"explorer/models"
+
+	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
 )
 
 // tokenUsecase used for injecting an implementation of TokenRepository
@@ -18,7 +22,7 @@ type tokenUsecase struct {
 	PrivKey               *rsa.PrivateKey
 	PubKey                *rsa.PublicKey
 	RefreshSecret         string
-	IDExpirationSecs      int64
+	AccessExpirationSecs  int64
 	RefreshExpirationSecs int64
 }
 
@@ -29,7 +33,7 @@ type TSConfig struct {
 	PrivKey               *rsa.PrivateKey
 	PubKey                *rsa.PublicKey
 	RefreshSecret         string
-	IDExpirationSecs      int64
+	AccessExpirationSecs  int64
 	RefreshExpirationSecs int64
 }
 
@@ -41,45 +45,93 @@ func NewTokenUsecase(c *TSConfig) auth.TokenUsecase {
 		PrivKey:               c.PrivKey,
 		PubKey:                c.PubKey,
 		RefreshSecret:         c.RefreshSecret,
-		IDExpirationSecs:      c.IDExpirationSecs,
+		AccessExpirationSecs:  c.AccessExpirationSecs,
 		RefreshExpirationSecs: c.RefreshExpirationSecs,
 	}
 }
 
 // NewPairTokens creates fresh id and refresh tokens for the current user
-// If a previous token is included, the previous token is removed from
-// the tokens repository
-func (s *tokenUsecase) NewPairTokens(ctx context.Context, u *models.User, prevTokenID string) (*models.TokenPair, error) {
-	// No need to use a repository for idToken as it is unrelated to any data source
-	idToken, err := generateIDToken(u, s.PrivKey, s.IDExpirationSecs)
+func (s *tokenUsecase) NewPairTokens(ctx context.Context, u *models.User) (*models.TokenDetails, error) {
+	td := &models.TokenDetails{}
+
+	currentUTime := time.Now().Unix()
+	td.AtExpires = currentUTime + s.AccessExpirationSecs
+	td.AccessUuid = uuid.NewString()
+
+	claimsAt := accessTokenCustomClaims{
+		User: &userToToken{UID: u.ID.String(),
+			Email: u.Email},
+		StandardClaims: jwt.StandardClaims{
+			Id:        td.AccessUuid,
+			IssuedAt:  currentUTime,
+			ExpiresAt: td.AtExpires,
+		},
+	}
+
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodRS256, claimsAt)
+	signedAccessToken, err := accessToken.SignedString(s.PrivKey)
 	if err != nil {
-		log.Printf("Error generating idToken for uid: %v. Error: %v\n", u.ID, err.Error())
+		log.Printf("Failed to sign id token: %v\n", err)
 		return nil, apperrors.NewInternal()
 	}
 
-	refreshToken, err := generateRefreshToken(u.ID, s.RefreshSecret, s.RefreshExpirationSecs)
+	td.AccessToken = signedAccessToken
+
+	td.RtExpires = currentUTime + s.RefreshExpirationSecs
+	td.RefreshUuid = uuid.NewString()
+
+	claimsRt := refreshTokenCustomClaims{
+		UID: u.ID.String(),
+		StandardClaims: jwt.StandardClaims{
+			IssuedAt:  currentUTime,
+			ExpiresAt: td.RtExpires,
+			Id:        td.RefreshUuid,
+		},
+	}
+
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claimsRt)
+	signedRefreshToken, err := refreshToken.SignedString([]byte(s.RefreshSecret))
 	if err != nil {
-		log.Printf("Error generating refreshToken for uid: %v. Error: %v\n", u.ID, err.Error())
-		return nil, apperrors.NewInternal()
+		log.Printf("Failed to sign refresh token: %v\n", err)
+		return nil, err
+	}
+
+	td.RefreshToken = signedRefreshToken
+
+	// refreshToken, err := generateRefreshToken(u.ID, s.RefreshSecret, s.RefreshExpirationSecs)
+	// if err != nil {
+	// 	log.Printf("Error generating refreshToken for uid: %v. Error: %v\n", u.ID, err.Error())
+	// 	return nil, apperrors.NewInternal()
+	// }
+
+	// delete user's current refresh token (used when refreshing idToken)
+	// if prevTokenID != "" {
+	// 	if err := s.TokenRepository.DeleteRefreshToken(ctx, u.ID.String(), prevTokenID); err != nil {
+	// 		log.Printf("Could not delete previous refreshToken for uid: %v, tokenID: %v\n", u.ID.String(), prevTokenID)
+	// 	}
+	// }
+
+	return td, nil
+}
+
+// SavePairTokens save tokens to Redis DB
+func (s *tokenUsecase) SavePairTokens(ctx context.Context, td *models.TokenDetails) error {
+	at := time.Unix(td.AtExpires, 0) //converting Unix to UTC(to Time object)
+	rt := time.Unix(td.RtExpires, 0)
+	now := time.Now()
+
+	// set freshly minted access token to valid list
+	if err := s.TokenRepository.SetAccessToken(ctx, td.AccessUuid, td.AccessToken, at.Sub(now)); err != nil {
+		return err
 	}
 
 	// set freshly minted refresh token to valid list
-	if err := s.TokenRepository.SetRefreshToken(ctx, u.ID.String(), refreshToken.ID.String(), refreshToken.ExpiresIn); err != nil {
-		log.Printf("Error storing tokenID for uid: %v. Error: %v\n", u.ID, err.Error())
-		return nil, apperrors.NewInternal()
+	if err := s.TokenRepository.SetRefreshToken(ctx, td.RefreshUuid, td.RefreshToken, rt.Sub(now)); err != nil {
+		return err
 	}
 
-	// delete user's current refresh token (used when refreshing idToken)
-	if prevTokenID != "" {
-		if err := s.TokenRepository.DeleteRefreshToken(ctx, u.ID.String(), prevTokenID); err != nil {
-			log.Printf("Could not delete previous refreshToken for uid: %v, tokenID: %v\n", u.ID.String(), prevTokenID)
-		}
-	}
+	return nil
 
-	return &models.TokenPair{
-		IDToken:      models.IDToken{SS: idToken},
-		RefreshToken: models.RefreshToken{SS: refreshToken.SS, ID: refreshToken.ID, UID: u.ID},
-	}, nil
 }
 
 // ValidateIDToken validates the id token jwt string
@@ -93,5 +145,12 @@ func (s *tokenUsecase) ValidateIDToken(ctx context.Context, tokenString string) 
 		return nil, apperrors.NewAuthorization("Unable to verify user from idToken")
 	}
 
-	return claims.User, nil
+	return &models.User{
+		ID:    uuid.MustParse(claims.User.UID),
+		Email: claims.User.Email,
+	}, nil
+}
+
+func (s *tokenUsecase) RefreshToken(ctx context.Context) error {
+	return nil
 }

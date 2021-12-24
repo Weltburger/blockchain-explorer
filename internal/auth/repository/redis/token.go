@@ -26,12 +26,21 @@ func NewTokenRepository(redisClient *redis.Client) auth.TokenRepo {
 }
 
 // SetRefreshToken stores a refresh token with an expiry time
-func (r *redisTokenRepository) SetRefreshToken(ctx context.Context, userID string, tokenID string, expiresIn time.Duration) error {
+func (r *redisTokenRepository) SetRefreshToken(ctx context.Context, tokenID string, userID string, expiresIn time.Duration) error {
 	// We'll store userID with token id so we can scan (non-blocking)
 	// over the user's tokens and delete them in case of token leakage
-	key := fmt.Sprintf("%s:%s", userID, tokenID)
-	if err := r.Redis.Set(ctx, key, 0, expiresIn).Err(); err != nil {
+	// key := fmt.Sprintf("%s:%s", userID, tokenID)
+	if err := r.Redis.Set(ctx, tokenID, userID, expiresIn).Err(); err != nil {
 		log.Printf("Could not SET refresh token to redis for userID/tokenID: %s/%s: %v\n", userID, tokenID, err)
+		return apperrors.NewInternal()
+	}
+	return nil
+}
+
+// SetAccessToken stores a refresh token with an expiry time
+func (r *redisTokenRepository) SetAccessToken(ctx context.Context, tokenID string, userID string, expiresIn time.Duration) error {
+	if err := r.Redis.Set(ctx, tokenID, userID, expiresIn).Err(); err != nil {
+		log.Printf("Could not SET access token to redis for userID/tokenID: %s/%s: %v\n", userID, tokenID, err)
 		return apperrors.NewInternal()
 	}
 	return nil

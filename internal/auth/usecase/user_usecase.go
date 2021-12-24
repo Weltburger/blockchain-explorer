@@ -46,12 +46,13 @@ func (u *UserCase) SignUp(ctx context.Context, usr *models.User) error {
 func (u *UserCase) SignIn(ctx context.Context, usr *models.User) error {
 	userFetched, err := u.userRepo.GetByEmail(ctx, usr.Email)
 	if err != nil {
-		return apperrors.NewNotFound("email", usr.Email)
+		return err
 	}
 
 	// verify password
 	match, err := doPasswordsMatch(userFetched.Password, usr.Password)
 	if err != nil {
+		log.Printf("Error compare hash: %v\n", err)
 		return apperrors.NewInternal()
 	}
 
@@ -64,4 +65,10 @@ func (u *UserCase) SignIn(ctx context.Context, usr *models.User) error {
 
 	return nil
 
+}
+
+// Signout
+func (u *UserCase) SignOut(ctx context.Context) error {
+	// hash user password
+	return nil
 }

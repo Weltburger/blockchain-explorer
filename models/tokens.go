@@ -16,8 +16,12 @@ type IDToken struct {
 	SS string `json:"idToken"`
 }
 
-// TokenPair used for returning pairs of id and refresh tokens
-type TokenPair struct {
-	IDToken
-	RefreshToken
+// TokenDetails used for pair of id and refresh tokens with addition parameters
+type TokenDetails struct {
+	AccessToken  string
+	RefreshToken string
+	AccessUuid   string
+	RefreshUuid  string
+	AtExpires    int64
+	RtExpires    int64
 }
