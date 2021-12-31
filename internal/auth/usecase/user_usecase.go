@@ -28,6 +28,7 @@ func (u *UserCase) Get(ctx context.Context, uid uuid.UUID) (*models.User, error)
 	return user, err
 }
 
+// Signup handler use for register new user
 func (u *UserCase) SignUp(ctx context.Context, usr *models.User) error {
 	// hash user password
 	pwd, err := hashPassword(usr.Password)
@@ -43,6 +44,7 @@ func (u *UserCase) SignUp(ctx context.Context, usr *models.User) error {
 	return u.userRepo.CreateUser(ctx, usr)
 }
 
+// Signin handler use for fetch user from DB and compare passwords
 func (u *UserCase) SignIn(ctx context.Context, usr *models.User) error {
 	userFetched, err := u.userRepo.GetByEmail(ctx, usr.Email)
 	if err != nil {
@@ -65,10 +67,4 @@ func (u *UserCase) SignIn(ctx context.Context, usr *models.User) error {
 
 	return nil
 
-}
-
-// Signout
-func (u *UserCase) SignOut(ctx context.Context) error {
-	// hash user password
-	return nil
 }

@@ -17,7 +17,7 @@ type AuthMiddleware struct {
 func NewAuthMiddleware(t auth.TokenUsecase, next echo.HandlerFunc) echo.HandlerFunc {
 	return (&AuthMiddleware{
 		token: t,
-		next: next,
+		next:  next,
 	}).Handle
 }
 
@@ -38,7 +38,7 @@ func (m *AuthMiddleware) Handle(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	user, err := m.token.ValidateIDToken(ctx, headerParts[1])
+	user, err := m.token.ValidateAccessToken(ctx, headerParts[1])
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, apperrors.NewAuthorization(err.Error()))
 	}

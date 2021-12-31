@@ -59,10 +59,10 @@ func (h *Handler) SignIn(c echo.Context) error {
 		return c.JSON(signError.Status(), signError)
 	}
 
-	tokenDetails, err := h.TokenUseCase.NewPairTokens(ctx, u)
+	tokenDetails, err := h.TokenUseCase.NewPairTokens(ctx, u.ID.String())
 	if err != nil {
-		log.Printf("Failed to create tokens for user: %v\n", err.Error())
-		tokenError := err.(*apperrors.Error)
+		log.Printf("Failed to create tokens for userID: %s - %v\n", u.ID.String(), err)
+		tokenError := apperrors.NewInternal()
 		return c.JSON(tokenError.Status(), tokenError)
 	}
 
@@ -73,9 +73,9 @@ func (h *Handler) SignIn(c echo.Context) error {
 		return c.JSON(saveErr.Status(), saveErr)
 	}
 
-	tokens := map[string]string{
-		"access_token":  tokenDetails.AccessToken,
-		"refresh_token": tokenDetails.RefreshToken,
+	tokens := &models.TokenPair{
+		AccessToken:  tokenDetails.AccessToken,
+		RefreshToken: tokenDetails.RefreshToken,
 	}
 	return c.JSON(http.StatusOK, tokens)
 

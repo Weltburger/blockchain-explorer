@@ -8,11 +8,12 @@ import (
 	explhttp "explorer/internal/explorer/delivery/http"
 	"explorer/internal/storage"
 	"fmt"
-	echoSwagger "github.com/swaggo/echo-swagger"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
+
+	echoSwagger "github.com/swaggo/echo-swagger"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
@@ -89,7 +90,7 @@ func inject() (*Server, error) {
 		PrivKey:               privKey,
 		PubKey:                pubKey,
 		RefreshSecret:         refreshSecret,
-		IDExpirationSecs:      idExp,
+		AccessExpirationSecs:  idExp,
 		RefreshExpirationSecs: refreshExp,
 	})
 

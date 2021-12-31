@@ -3,19 +3,15 @@ package usecase
 import (
 	"crypto/rsa"
 	"fmt"
+	"net/http"
+	"strings"
 
 	"github.com/dgrijalva/jwt-go"
 )
 
-// UserToToken struct holds data which will be insert to idToken
-type userToToken struct {
-	UID   string
-	Email string
-}
-
 // idTokenCustomClaims holds structure of jwt claims of idToken
 type accessTokenCustomClaims struct {
-	User *userToToken `json:"user"`
+	UID string `json:"uid"`
 	jwt.StandardClaims
 }
 
@@ -24,82 +20,18 @@ type refreshTokenCustomClaims struct {
 	jwt.StandardClaims
 }
 
-// generateIDToken generates an IDToken which is a jwt with myCustomClaims
-// Could call this GenerateIDTokenString, but the signature makes this fairly clear
-// func generateAccessToken(u *models.User, key *rsa.PrivateKey, exp int64) (string, error) {
-// 	unixTime := time.Now().Unix()
-// 	tokenExp := unixTime + exp
-// 	accessTokenUuid := uuid.NewString()
+//get the token from the request header
+func extractToken(r *http.Request) string {
+	bearerToken := r.Header.Get("Authorization")
+	tokenArr := strings.Split(bearerToken, " ")
+	if len(tokenArr) == 2 && strings.Contains(tokenArr[0], "Bearer") {
+		return tokenArr[1]
+	}
+	return ""
+}
 
-// 	claims := accessTokenCustomClaims{
-// 		User: &userToToken{UID: u.ID.String(),
-// 			Email: u.Email},
-// 		StandardClaims: jwt.StandardClaims{
-// 			Id:        accessTokenUuid,
-// 			IssuedAt:  unixTime,
-// 			ExpiresAt: tokenExp,
-// 		},
-// 	}
-
-// 	idToken := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-// 	signedToken, err := idToken.SignedString(key)
-// 	if err != nil {
-// 		log.Println("Failed to sign id token")
-// 		return "", err
-// 	}
-
-// 	return signedToken, nil
-// }
-
-// refreshTokenData holds the actual signed jwt string along with the ID
-// We return the id so it can be used without re-parsing the JWT from signed string
-// type refreshTokenData struct {
-// 	SS        string
-// 	ID        uuid.UUID
-// 	ExpiresIn time.Duration
-// }
-
-// refreshTokenCustomClaims holds the payload of a refresh token
-// This can be used to extract user id for subsequent
-// application operations (IE, fetch user in Redis)
-
-// generateRefreshToken creates a refresh token
-// The refresh token stores only the user's ID, a string
-// func generateRefreshToken(uid uuid.UUID, key string, exp int64) (*refreshTokenData, error) {
-// 	currentTime := time.Now()
-// 	tokenExp := currentTime.Add(time.Duration(exp) * time.Second)
-// 	tokenID, err := uuid.NewRandom() // v4 uuid in the google uuid lib
-// 	if err != nil {
-// 		log.Println("Failed to generate refresh token ID")
-// 		return nil, err
-// 	}
-
-// 	claims := refreshTokenCustomClaims{
-// 		UID: uid,
-// 		StandardClaims: jwt.StandardClaims{
-// 			IssuedAt:  currentTime.Unix(),
-// 			ExpiresAt: tokenExp.Unix(),
-// 			Id:        tokenID.String(),
-// 		},
-// 	}
-
-// 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-// 	ss, err := token.SignedString([]byte(key))
-
-// 	if err != nil {
-// 		log.Println("Failed to sign refresh token string")
-// 		return nil, err
-// 	}
-
-// 	return &refreshTokenData{
-// 		SS:        ss,
-// 		ID:        tokenID,
-// 		ExpiresIn: tokenExp.Sub(currentTime),
-// 	}, nil
-// }
-
-// validateIDToken returns the token's claims if the token is valid
-func validateIDToken(tokenString string, key *rsa.PublicKey) (*accessTokenCustomClaims, error) {
+// validAcToken returns the token's claims if the token is valid
+func validAcToken(tokenString string, key *rsa.PublicKey) (*accessTokenCustomClaims, error) {
 	claims := &accessTokenCustomClaims{}
 
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
@@ -117,6 +49,29 @@ func validateIDToken(tokenString string, key *rsa.PublicKey) (*accessTokenCustom
 
 	claims, ok := token.Claims.(*accessTokenCustomClaims)
 
+	if !ok {
+		return nil, fmt.Errorf("ID token valid but couldn't parse claims")
+	}
+
+	return claims, nil
+}
+
+// validRfToken returns the token's claims if the token is valid
+func validRfToken(tokenString string, key string) (*refreshTokenCustomClaims, error) {
+	claims := &refreshTokenCustomClaims{}
+
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(key), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if !token.Valid {
+		return nil, fmt.Errorf("ID token is invalid")
+	}
+
+	claims, ok := token.Claims.(*refreshTokenCustomClaims)
 	if !ok {
 		return nil, fmt.Errorf("ID token valid but couldn't parse claims")
 	}

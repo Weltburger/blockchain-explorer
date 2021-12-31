@@ -263,9 +263,9 @@ definitions:
     type: object
   models.TokenPair:
     properties:
-      idToken:
+      access_token:
         type: string
-      refreshToken:
+      refresh_token:
         type: string
     type: object
   models.Transaction:
@@ -314,6 +314,47 @@ info:
   title: Blockchain Explorer
   version: 0.9.1
 paths:
+  /api/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: refresh token pair
+      operationId: refresh
+      parameters:
+      - description: access token
+        in: body
+        name: access_token
+        required: true
+        schema:
+          type: string
+      - description: refresh token
+        in: body
+        name: refresh_token
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TokenPair'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+      summary: Refresh
+      tags:
+      - auth
   /api/auth/sign-ip:
     post:
       consumes:
@@ -361,6 +402,34 @@ paths:
           schema:
             $ref: '#/definitions/apperrors.Error'
       summary: SignIn
+      tags:
+      - auth
+  /api/auth/sign-out:
+    post:
+      description: Logout from the service
+      operationId: sign-out
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apperrors.Error'
+      summary: SignOut
       tags:
       - auth
   /api/auth/sign-up:
