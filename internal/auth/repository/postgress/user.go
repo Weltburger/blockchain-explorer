@@ -1,4 +1,4 @@
-package postgres
+package postgress
 
 import (
 	"context"
@@ -63,8 +63,8 @@ func (r *PGUserRepository) GetByID(ctx context.Context, uid uuid.UUID) (*models.
 
 	query := "SELECT * FROM users WHERE uid=$1"
 
-	// we need to actually check errors as it could be something other than not found
 	if err := r.DB.GetContext(ctx, user, query, uid); err != nil {
+		log.Printf("Unable to get user with Id: %v. Err: %v\n", uid, err)
 		return user, apperrors.NewNotFound("uid", uid.String())
 	}
 

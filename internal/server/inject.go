@@ -2,7 +2,7 @@ package server
 
 import (
 	authhttp "explorer/internal/auth/delivery/http"
-	pgrepo "explorer/internal/auth/repository/postgres"
+	pgrepo "explorer/internal/auth/repository/postgress"
 	redisrepo "explorer/internal/auth/repository/redis"
 	"explorer/internal/auth/usecase"
 	explhttp "explorer/internal/explorer/delivery/http"

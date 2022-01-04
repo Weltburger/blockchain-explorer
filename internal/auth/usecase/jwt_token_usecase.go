@@ -6,14 +6,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"explorer/internal/apperrors"
 	"explorer/internal/auth"
 	"explorer/models"
-
-	"github.com/dgrijalva/jwt-go"
-	"github.com/google/uuid"
 )
 
 // tokenUsecase used for injecting an implementation of TokenRepository
@@ -53,119 +51,39 @@ func NewTokenUsecase(c *TSConfig) auth.TokenUsecase {
 }
 
 // NewPairTokens creates fresh id and refresh tokens for the current user
-func (s *tokenUsecase) NewPairTokens(ctx context.Context, uid string) (*models.TokenDetails, error) {
-	td := &models.TokenDetails{}
+func (s *tokenUsecase) GenerateTokens(ctx context.Context, uid string) (*models.TokenPair, error) {
+	tp := &models.TokenPair{}
 
-	currentUTime := time.Now().Unix()
-	td.AtExpires = currentUTime + s.AccessExpirationSecs
-	td.AccessUuid = uuid.NewString()
-
-	claimsAt := accessTokenCustomClaims{
-		UID: uid,
-		StandardClaims: jwt.StandardClaims{
-			Id:        td.AccessUuid,
-			IssuedAt:  currentUTime,
-			ExpiresAt: td.AtExpires,
-			Issuer:    "Block-explorer",
-		},
-	}
-
-	accessToken := jwt.NewWithClaims(jwt.SigningMethodRS256, claimsAt)
-	signedAccessToken, err := accessToken.SignedString(s.PrivKey)
+	// make access token
+	accessTokenData, err := makeAccessT(uid, s.PrivKey, s.AccessExpirationSecs)
 	if err != nil {
-		log.Printf("Failed to sign id token: %v\n", err)
 		return nil, err
 	}
 
-	td.AccessToken = signedAccessToken
-
-	td.RtExpires = currentUTime + s.RefreshExpirationSecs
-	td.RefreshUuid = fmt.Sprintf("%s:%s", td.AccessUuid, uid)
-
-	claimsRt := refreshTokenCustomClaims{
-		UID: uid,
-		StandardClaims: jwt.StandardClaims{
-			Id:        td.RefreshUuid,
-			IssuedAt:  currentUTime,
-			ExpiresAt: td.RtExpires,
-			Issuer:    "Block-explorer",
-		},
-	}
-
-	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claimsRt)
-	signedRefreshToken, err := refreshToken.SignedString([]byte(s.RefreshSecret))
+	// make refresh token
+	refreshTokenData, err := makeRefreshT(strings.Join([]string{accessTokenData.TokenId, uid}, ":"), []byte(s.RefreshSecret), s.RefreshExpirationSecs)
 	if err != nil {
-		log.Printf("Failed to sign refresh token: %v\n", err)
 		return nil, err
 	}
 
-	td.RefreshToken = signedRefreshToken
-
-	return td, nil
-}
-
-// SavePairTokens save tokens to Redis DB
-func (s *tokenUsecase) SavePairTokens(ctx context.Context, td *models.TokenDetails) error {
-	at := time.Unix(td.AtExpires, 0) //converting Unix to UTC(to Time object)
-	rt := time.Unix(td.RtExpires, 0)
+	at := time.Unix(accessTokenData.ExpiredAt, 0) //converting Unix to UTC(to Time object)
+	rt := time.Unix(refreshTokenData.ExpiredAt, 0)
 	now := time.Now()
 
-	// set freshly minted access token to valid list
-	if err := s.TokenRepository.SetAccessToken(ctx, td.AccessUuid, td.AccessToken, at.Sub(now)); err != nil {
-		return err
+	// set access token to valid list
+	if err := s.TokenRepository.SetToken(ctx, accessTokenData.TokenId, accessTokenData.Token, at.Sub(now)); err != nil {
+		return tp, err
 	}
 
-	// set freshly minted refresh token to valid list
-	if err := s.TokenRepository.SetRefreshToken(ctx, td.RefreshUuid, td.RefreshToken, rt.Sub(now)); err != nil {
-		return err
+	// set access token to valid list
+	if err := s.TokenRepository.SetToken(ctx, refreshTokenData.TokenId, refreshTokenData.Token, rt.Sub(now)); err != nil {
+		return tp, err
 	}
 
-	return nil
+	tp.AccessToken = accessTokenData.Token
+	tp.RefreshToken = refreshTokenData.Token
 
-}
-
-// ValidateIDToken validates the id token jwt string
-// It returns the user extract from the IDTokenCustomClaims
-func (s *tokenUsecase) ValidateAccessToken(ctx context.Context, tokenStr string) (*models.ValidationDetails, error) {
-
-	claims, err := validAcToken(tokenStr, s.PubKey) // uses public RSA key
-	// We'll just return unauthorized error in all instances of failing to verify user
-	if err != nil {
-		log.Printf("Unable to validate or parse accessToken - Error: %v\n", err)
-		return nil, apperrors.NewAuthorization(err.Error())
-	}
-
-	userId, err := s.TokenRepository.FetchAuth(ctx, claims.Id)
-	if err != nil {
-		log.Printf("Error fetch tokenId %s from Redis: %v", claims.Id, err)
-		return nil, apperrors.NewInternal()
-	}
-
-	log.Println(userId)
-	log.Println(claims.UID)
-
-	if userId != claims.UID {
-		return nil, apperrors.NewAuthorization("Error compare userId in DB and token.")
-	}
-
-	return &models.ValidationDetails{
-		TokenUuid: claims.Id,
-		UserId:    claims.UID,
-	}, nil
-}
-
-func (s *tokenUsecase) ValidateRefreshToken(ctx context.Context, tokenStr string) (*models.ValidationDetails, error) {
-
-	refreshClaims, err := validRfToken(tokenStr, s.RefreshSecret)
-	if err != nil {
-		log.Printf("Unable to validate or parse refreshToken - Error: %v\n", err)
-		return nil, apperrors.NewAuthorization(err.Error())
-	}
-
-	return &models.ValidationDetails{
-		TokenUuid: refreshClaims.Id,
-		UserId:    refreshClaims.UID,
-	}, nil
+	return tp, nil
 }
 
 // DeleteTokens handler delete tokens from DB
@@ -174,18 +92,18 @@ func (s *tokenUsecase) DeleteTokens(ctx context.Context, r *http.Request) error 
 	if tokenStr == "" {
 		return apperrors.NewBadRequest("Error extract token from request header.")
 	}
-	accessClaims, err := validAcToken(tokenStr, s.PubKey)
+	tokenClaims, err := validAccessT(tokenStr, s.PubKey)
 	if err != nil {
 		return apperrors.NewAuthorization(err.Error())
 	}
 
-	delAcError := s.TokenRepository.DeleteAccessToken(ctx, accessClaims.UID)
+	delAcError := s.TokenRepository.DeleteToken(ctx, tokenClaims.TokenId)
 	if delAcError != nil {
 		return delAcError
 	}
 
-	refKey := fmt.Sprintf("%s:%s", accessClaims.Id, accessClaims.UID)
-	delRfError := s.TokenRepository.DeleteRefreshToken(ctx, refKey)
+	refKey := fmt.Sprintf("%s:%s", tokenClaims.TokenId, tokenClaims.UserId)
+	delRfError := s.TokenRepository.DeleteToken(ctx, refKey)
 	if delRfError != nil {
 		return delRfError
 	}
@@ -193,10 +111,47 @@ func (s *tokenUsecase) DeleteTokens(ctx context.Context, r *http.Request) error 
 	return nil
 }
 
-// DeleteTokens handler delete tokens from DB
+// ValidateToken validates the id token jwt string
+// It returns the user extract from the TokenCustomClaims
+func (s *tokenUsecase) ValidateToken(ctx context.Context, tokenStr string, isRefresh bool) (*models.ValidationDetails, error) {
+
+	customClaims := &TokenCustomClaims{}
+	if isRefresh {
+		claims, err := validRefreshT(tokenStr, []byte(s.RefreshSecret))
+		if err != nil {
+			log.Printf("Unable to validate or parse accessToken - Error: %v\n", err)
+			return nil, apperrors.NewAuthorization(err.Error())
+		}
+		*customClaims = *claims
+	} else {
+		claims, err := validAccessT(tokenStr, s.PubKey) // uses public RSA key
+		if err != nil {
+			log.Printf("Unable to validate or parse accessToken - Error: %v\n", err)
+			return nil, apperrors.NewAuthorization(err.Error())
+		}
+		*customClaims = *claims
+	}
+
+	tokenDB, err := s.TokenRepository.FetchToken(ctx, customClaims.TokenId)
+	if err != nil {
+		log.Printf("Error fetch token %s from Redis: %v", customClaims.TokenId, err)
+		return nil, apperrors.NewInternal()
+	}
+
+	if tokenStr != tokenDB {
+		return nil, apperrors.NewAuthorization("Error compare user token with DB token.")
+	}
+
+	return &models.ValidationDetails{
+		TokenId: customClaims.TokenId,
+		UserId:  customClaims.UserId,
+	}, nil
+}
+
+// DeleteRefreshTokens handler delete refresh token from DB
 func (s *tokenUsecase) DeleteRefreshToken(ctx context.Context, tokenStr string) error {
 
-	err := s.TokenRepository.DeleteRefreshToken(ctx, tokenStr)
+	err := s.TokenRepository.DeleteToken(ctx, tokenStr)
 	if err != nil {
 		return err
 	}

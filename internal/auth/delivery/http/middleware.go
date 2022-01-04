@@ -28,17 +28,17 @@ func (m *AuthMiddleware) Handle(c echo.Context) error {
 		return c.JSON(http.StatusUnauthorized, apperrors.NewAuthorization("Header authorization field is empty."))
 	}
 
-	headerParts := strings.Split(authHeader, "Bearer ")
-	if len(headerParts) != 2 {
+	tokenParts := strings.Split(authHeader, "Bearer ")
+	if len(tokenParts) != 2 {
 		return c.JSON(http.StatusUnauthorized, apperrors.NewAuthorization("Must provide Authorization header with format `Bearer {token}`"))
 	}
-	if strings.Contains(headerParts[0], "Bearer") {
+	if strings.Contains(tokenParts[0], "Bearer") {
 		return c.JSON(http.StatusUnauthorized, apperrors.NewAuthorization("Didn't find 'Bearer'"))
 	}
 
 	ctx := c.Request().Context()
 
-	user, err := m.token.ValidateAccessToken(ctx, headerParts[1])
+	user, err := m.token.ValidateToken(ctx, tokenParts[1], false)
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, apperrors.NewAuthorization(err.Error()))
 	}

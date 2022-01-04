@@ -2,7 +2,6 @@ package http
 
 import (
 	"explorer/internal/apperrors"
-	"explorer/models"
 	"log"
 	"net/http"
 
@@ -10,7 +9,6 @@ import (
 )
 
 type refreshReq struct {
-	AccessToken  string `json:"access_token" validate:"required"`
 	RefreshToken string `json:"refresh_token" validate:"required"`
 }
 
@@ -20,7 +18,6 @@ type refreshReq struct {
 // @Accept json
 // @Produce  json
 // @ID refresh
-// @Param access_token body string true "access token"
 // @Param refresh_token body string true "refresh token"
 // @Success 200 {object} models.TokenPair
 // @Failure 400 {object} apperrors.Error
@@ -40,42 +37,29 @@ func (h *Handler) Refresh(c echo.Context) error {
 
 	// validate input fields format and security requirements
 	if ok, err := validData(c, req); !ok || err != nil {
-		validError := err.(*apperrors.Error)
-		return c.JSON(validError.Status(), validError)
+		return err
 	}
 
 	ctx := c.Request().Context()
 
-	refreshDetails, err := h.TokenUseCase.ValidateRefreshToken(ctx, req.RefreshToken)
+	refreshDetails, err := h.TokenUseCase.ValidateToken(ctx, req.RefreshToken, true)
 	if err != nil {
 		validRefError := err.(*apperrors.Error)
 		return c.JSON(validRefError.Status(), validRefError)
 	}
 
-	newTokenDetails, err := h.TokenUseCase.NewPairTokens(ctx, refreshDetails.UserId)
+	newTokenPair, err := h.TokenUseCase.GenerateTokens(ctx, refreshDetails.UserId)
 	if err != nil {
 		log.Printf("Error generate new token pair: %v", err)
 		return c.JSON(apperrors.NewInternal().Status(), apperrors.NewInternal())
 	}
 
-	err = h.TokenUseCase.SavePairTokens(ctx, newTokenDetails)
-	if err != nil {
-		log.Printf("Failed to set tokens to DB: %v\n", err.Error())
-		saveErr := err.(*apperrors.Error)
-		return c.JSON(saveErr.Status(), saveErr)
-	}
-
-	err = h.TokenUseCase.DeleteRefreshToken(ctx, refreshDetails.TokenUuid)
+	err = h.TokenUseCase.DeleteRefreshToken(ctx, refreshDetails.TokenId)
 	if err != nil {
 		delError := err.(*apperrors.Error)
 		return c.JSON(delError.Status(), delError)
 	}
 
-	tokens := &models.TokenPair{
-		AccessToken:  newTokenDetails.AccessToken,
-		RefreshToken: newTokenDetails.RefreshToken,
-	}
-
-	return c.JSON(http.StatusOK, tokens)
+	return c.JSON(http.StatusOK, newTokenPair)
 
 }
