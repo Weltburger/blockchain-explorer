@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -25,26 +24,32 @@ func NewTokenRepository(redisClient *redis.Client) auth.TokenRepo {
 	}
 }
 
-// SetRefreshToken stores a refresh token with an expiry time
-func (r *redisTokenRepository) SetRefreshToken(ctx context.Context, userID string, tokenID string, expiresIn time.Duration) error {
-	// We'll store userID with token id so we can scan (non-blocking)
-	// over the user's tokens and delete them in case of token leakage
-	key := fmt.Sprintf("%s:%s", userID, tokenID)
-	if err := r.Redis.Set(ctx, key, 0, expiresIn).Err(); err != nil {
-		log.Printf("Could not SET refresh token to redis for userID/tokenID: %s/%s: %v\n", userID, tokenID, err)
+// SetRefreshToken stores token with an expiry time
+func (r *redisTokenRepository) SetToken(ctx context.Context, key string, value string, expiresIn time.Duration) error {
+	if err := r.Redis.Set(ctx, key, value, expiresIn).Err(); err != nil {
+		log.Printf("Could not SET token to redis for %s/%s: %v\n", key, value, err)
 		return apperrors.NewInternal()
 	}
 	return nil
 }
 
-// DeleteRefreshToken used to delete old  refresh tokens
+// DeleteToken used to delete old  tokens
 // Services my access this to revolve tokens
-func (r *redisTokenRepository) DeleteRefreshToken(ctx context.Context, userID string, tokenID string) error {
-	key := fmt.Sprintf("%s:%s", userID, tokenID)
-	if err := r.Redis.Del(ctx, key).Err(); err != nil {
-		log.Printf("Could not delete refresh token to redis for userID/tokenID: %s/%s: %v\n", userID, tokenID, err)
+func (r *redisTokenRepository) DeleteToken(ctx context.Context, tokenId string) error {
+	if err := r.Redis.Del(ctx, tokenId).Err(); err != nil {
+		log.Printf("Could not delete token from redis for %s: %v\n", tokenId, err)
 		return apperrors.NewInternal()
 	}
 
 	return nil
+}
+
+// FetchAuth use to fetch data from Redis by tokenId
+func (r *redisTokenRepository) FetchToken(ctx context.Context, tokenId string) (string, error) {
+	val, err := r.Redis.Get(ctx, tokenId).Result()
+	if err != nil {
+		log.Printf("Could not fetch token from redis for %s: %v\n", tokenId, err)
+		return "", apperrors.NewInternal()
+	}
+	return val, nil
 }

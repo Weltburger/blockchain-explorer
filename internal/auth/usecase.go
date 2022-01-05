@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"explorer/models"
+	"net/http"
 
 	"github.com/google/uuid"
 )
@@ -20,6 +21,8 @@ type UserUsecase interface {
 // TokenService defines methods the handler layer expects to interact
 // with in regards to producing JWTs as string
 type TokenUsecase interface {
-	NewPairTokens(ctx context.Context, u *models.User, prevTokenID string) (*models.TokenPair, error)
-	ValidateIDToken(ctx context.Context, tokenString string) (*models.User, error)
+	GenerateTokens(ctx context.Context, user string) (*models.TokenPair, error)
+	DeleteTokens(ctx context.Context, r *http.Request) error
+	ValidateToken(ctx context.Context, token string, refresh bool) (*models.ValidationDetails, error)
+	DeleteRefreshToken(ctx context.Context, tokenStr string) error
 }

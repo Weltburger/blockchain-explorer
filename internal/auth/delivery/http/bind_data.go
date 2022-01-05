@@ -25,7 +25,7 @@ func bindData(c echo.Context, req interface{}) (bool, error) {
 		msg := fmt.Sprintf("%s only accepts Content-Type application/json", c.Path())
 		err := apperrors.NewUnsupportedMediaType(msg)
 
-		return false, c.JSON(err.Status(), err)
+		return false, err
 	}
 	// Bind incoming json to struct and check for validation errors
 	if err := c.Bind(req); err != nil {
@@ -33,7 +33,7 @@ func bindData(c echo.Context, req interface{}) (bool, error) {
 
 		//return an internal server error
 		bindError := apperrors.NewInternal()
-		return false, c.JSON(bindError.Status(), bindError)
+		return false, bindError
 	}
 
 	return true, nil

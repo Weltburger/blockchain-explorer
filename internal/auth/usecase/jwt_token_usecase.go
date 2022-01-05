@@ -3,7 +3,11 @@ package usecase
 import (
 	"context"
 	"crypto/rsa"
+	"fmt"
 	"log"
+	"net/http"
+	"strings"
+	"time"
 
 	"explorer/internal/apperrors"
 	"explorer/internal/auth"
@@ -18,7 +22,7 @@ type tokenUsecase struct {
 	PrivKey               *rsa.PrivateKey
 	PubKey                *rsa.PublicKey
 	RefreshSecret         string
-	IDExpirationSecs      int64
+	AccessExpirationSecs  int64
 	RefreshExpirationSecs int64
 }
 
@@ -29,7 +33,7 @@ type TSConfig struct {
 	PrivKey               *rsa.PrivateKey
 	PubKey                *rsa.PublicKey
 	RefreshSecret         string
-	IDExpirationSecs      int64
+	AccessExpirationSecs  int64
 	RefreshExpirationSecs int64
 }
 
@@ -41,57 +45,116 @@ func NewTokenUsecase(c *TSConfig) auth.TokenUsecase {
 		PrivKey:               c.PrivKey,
 		PubKey:                c.PubKey,
 		RefreshSecret:         c.RefreshSecret,
-		IDExpirationSecs:      c.IDExpirationSecs,
+		AccessExpirationSecs:  c.AccessExpirationSecs,
 		RefreshExpirationSecs: c.RefreshExpirationSecs,
 	}
 }
 
 // NewPairTokens creates fresh id and refresh tokens for the current user
-// If a previous token is included, the previous token is removed from
-// the tokens repository
-func (s *tokenUsecase) NewPairTokens(ctx context.Context, u *models.User, prevTokenID string) (*models.TokenPair, error) {
-	// No need to use a repository for idToken as it is unrelated to any data source
-	idToken, err := generateIDToken(u, s.PrivKey, s.IDExpirationSecs)
+func (s *tokenUsecase) GenerateTokens(ctx context.Context, uid string) (*models.TokenPair, error) {
+	tp := &models.TokenPair{}
+
+	// make access token
+	accessTokenData, err := makeAccessT(uid, s.PrivKey, s.AccessExpirationSecs)
 	if err != nil {
-		log.Printf("Error generating idToken for uid: %v. Error: %v\n", u.ID, err.Error())
-		return nil, apperrors.NewInternal()
+		return nil, err
 	}
 
-	refreshToken, err := generateRefreshToken(u.ID, s.RefreshSecret, s.RefreshExpirationSecs)
+	// make refresh token
+	refreshTokenData, err := makeRefreshT(strings.Join([]string{accessTokenData.TokenId, uid}, ":"), []byte(s.RefreshSecret), s.RefreshExpirationSecs)
 	if err != nil {
-		log.Printf("Error generating refreshToken for uid: %v. Error: %v\n", u.ID, err.Error())
-		return nil, apperrors.NewInternal()
+		return nil, err
 	}
 
-	// set freshly minted refresh token to valid list
-	if err := s.TokenRepository.SetRefreshToken(ctx, u.ID.String(), refreshToken.ID.String(), refreshToken.ExpiresIn); err != nil {
-		log.Printf("Error storing tokenID for uid: %v. Error: %v\n", u.ID, err.Error())
-		return nil, apperrors.NewInternal()
+	at := time.Unix(accessTokenData.ExpiredAt, 0) //converting Unix to UTC(to Time object)
+	rt := time.Unix(refreshTokenData.ExpiredAt, 0)
+	now := time.Now()
+
+	// set access token to valid list
+	if err := s.TokenRepository.SetToken(ctx, accessTokenData.TokenId, accessTokenData.Token, at.Sub(now)); err != nil {
+		return tp, err
 	}
 
-	// delete user's current refresh token (used when refreshing idToken)
-	if prevTokenID != "" {
-		if err := s.TokenRepository.DeleteRefreshToken(ctx, u.ID.String(), prevTokenID); err != nil {
-			log.Printf("Could not delete previous refreshToken for uid: %v, tokenID: %v\n", u.ID.String(), prevTokenID)
+	// set access token to valid list
+	if err := s.TokenRepository.SetToken(ctx, refreshTokenData.TokenId, refreshTokenData.Token, rt.Sub(now)); err != nil {
+		return tp, err
+	}
+
+	tp.AccessToken = accessTokenData.Token
+	tp.RefreshToken = refreshTokenData.Token
+
+	return tp, nil
+}
+
+// DeleteTokens handler delete tokens from DB
+func (s *tokenUsecase) DeleteTokens(ctx context.Context, r *http.Request) error {
+	tokenStr := extractToken(r)
+	if tokenStr == "" {
+		return apperrors.NewBadRequest("Error extract token from request header.")
+	}
+	tokenClaims, err := validAccessT(tokenStr, s.PubKey)
+	if err != nil {
+		return apperrors.NewAuthorization(err.Error())
+	}
+
+	delAcError := s.TokenRepository.DeleteToken(ctx, tokenClaims.TokenId)
+	if delAcError != nil {
+		return delAcError
+	}
+
+	refKey := fmt.Sprintf("%s:%s", tokenClaims.TokenId, tokenClaims.UserId)
+	delRfError := s.TokenRepository.DeleteToken(ctx, refKey)
+	if delRfError != nil {
+		return delRfError
+	}
+
+	return nil
+}
+
+// ValidateToken validates the id token jwt string
+// It returns the user extract from the TokenCustomClaims
+func (s *tokenUsecase) ValidateToken(ctx context.Context, tokenStr string, isRefresh bool) (*models.ValidationDetails, error) {
+
+	customClaims := &TokenCustomClaims{}
+	if isRefresh {
+		claims, err := validRefreshT(tokenStr, []byte(s.RefreshSecret))
+		if err != nil {
+			log.Printf("Unable to validate or parse accessToken - Error: %v\n", err)
+			return nil, apperrors.NewAuthorization(err.Error())
 		}
+		*customClaims = *claims
+	} else {
+		claims, err := validAccessT(tokenStr, s.PubKey) // uses public RSA key
+		if err != nil {
+			log.Printf("Unable to validate or parse accessToken - Error: %v\n", err)
+			return nil, apperrors.NewAuthorization(err.Error())
+		}
+		*customClaims = *claims
 	}
 
-	return &models.TokenPair{
-		IDToken:      models.IDToken{SS: idToken},
-		RefreshToken: models.RefreshToken{SS: refreshToken.SS, ID: refreshToken.ID, UID: u.ID},
+	tokenDB, err := s.TokenRepository.FetchToken(ctx, customClaims.TokenId)
+	if err != nil {
+		log.Printf("Error fetch token %s from Redis: %v", customClaims.TokenId, err)
+		return nil, apperrors.NewInternal()
+	}
+
+	if tokenStr != tokenDB {
+		return nil, apperrors.NewAuthorization("Error compare user token with DB token.")
+	}
+
+	return &models.ValidationDetails{
+		TokenId: customClaims.TokenId,
+		UserId:  customClaims.UserId,
 	}, nil
 }
 
-// ValidateIDToken validates the id token jwt string
-// It returns the user extract from the IDTokenCustomClaims
-func (s *tokenUsecase) ValidateIDToken(ctx context.Context, tokenString string) (*models.User, error) {
-	claims, err := validateIDToken(tokenString, s.PubKey) // uses public RSA key
+// DeleteRefreshTokens handler delete refresh token from DB
+func (s *tokenUsecase) DeleteRefreshToken(ctx context.Context, tokenStr string) error {
 
-	// We'll just return unauthorized error in all instances of failing to verify user
+	err := s.TokenRepository.DeleteToken(ctx, tokenStr)
 	if err != nil {
-		log.Printf("Unable to validate or parse idToken - Error: %v\n", err)
-		return nil, apperrors.NewAuthorization("Unable to verify user from idToken")
+		return err
 	}
 
-	return claims.User, nil
+	return nil
 }

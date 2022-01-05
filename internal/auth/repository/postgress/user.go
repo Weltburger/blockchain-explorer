@@ -1,4 +1,4 @@
-package postgres
+package postgress
 
 import (
 	"context"
@@ -28,7 +28,7 @@ func NewUserRepository(db *sqlx.DB) auth.UserRepo {
 
 // Create reaches out to database SQLX api
 func (r *PGUserRepository) CreateUser(ctx context.Context, u *models.User) error {
-	query := "INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *"
+	query := "INSERT INTO users (email, password) VALUES ($1, $2)"
 
 	if _, err := r.DB.ExecContext(ctx, query, u.Email, u.Password); err != nil {
 		// check unique constraint
@@ -63,8 +63,8 @@ func (r *PGUserRepository) GetByID(ctx context.Context, uid uuid.UUID) (*models.
 
 	query := "SELECT * FROM users WHERE uid=$1"
 
-	// we need to actually check errors as it could be something other than not found
 	if err := r.DB.GetContext(ctx, user, query, uid); err != nil {
+		log.Printf("Unable to get user with Id: %v. Err: %v\n", uid, err)
 		return user, apperrors.NewNotFound("uid", uid.String())
 	}
 

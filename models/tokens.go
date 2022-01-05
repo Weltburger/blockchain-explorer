@@ -1,23 +1,13 @@
 package models
 
-import "github.com/google/uuid"
-
-// RefreshToken stores token properties that
-// are accessed in multiple application layers
-type RefreshToken struct {
-	ID  uuid.UUID `json:"-"`
-	UID uuid.UUID `json:"-"`
-	SS  string    `json:"refreshToken"`
+// ValidationDetails user and token id pair
+type ValidationDetails struct {
+	UserId  string
+	TokenId string
 }
 
-// IDToken stores token properties that
-// are accessed in multiple application layers
-type IDToken struct {
-	SS string `json:"idToken"`
-}
-
-// TokenPair used for returning pairs of id and refresh tokens
+// TokenPair send send consumer after signin and refresh
 type TokenPair struct {
-	IDToken
-	RefreshToken
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }

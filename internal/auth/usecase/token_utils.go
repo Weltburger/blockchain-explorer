@@ -2,119 +2,148 @@ package usecase
 
 import (
 	"crypto/rsa"
+	"explorer/internal/apperrors"
 	"fmt"
 	"log"
+	"net/http"
+	"strings"
 	"time"
-
-	"explorer/models"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 )
 
-// idTokenCustomClaims holds structure of jwt claims of idToken
-type idTokenCustomClaims struct {
-	User *models.User `json:"user"`
+// TokenCustomClaims holds structure of jwt claims
+type TokenCustomClaims struct {
+	UserId  string `json:"user_id"`
+	TokenId string `json:"token_id"`
 	jwt.StandardClaims
 }
 
-// generateIDToken generates an IDToken which is a jwt with myCustomClaims
-// Could call this GenerateIDTokenString, but the signature makes this fairly clear
-func generateIDToken(u *models.User, key *rsa.PrivateKey, exp int64) (string, error) {
-	unixTime := time.Now().Unix()
-	tokenExp := unixTime + exp
+// TokenData struct holds all generated token metadata
+type tokenData struct {
+	TokenId   string
+	ExpiredAt int64
+	Token     string
+}
 
-	claims := idTokenCustomClaims{
-		User: u,
+//get the token from the request header
+func extractToken(r *http.Request) string {
+	bearerToken := r.Header.Get("Authorization")
+	tokenArr := strings.Split(bearerToken, " ")
+	if len(tokenArr) == 2 && strings.Contains(tokenArr[0], "Bearer") {
+		return tokenArr[1]
+	}
+	return ""
+}
+
+// makeAccessT function create access token
+func makeAccessT(id string, key *rsa.PrivateKey, tokenDuration int64) (*tokenData, error) {
+	td := &tokenData{}
+	currentUTime := time.Now().Unix()
+	td.ExpiredAt = currentUTime + tokenDuration
+	td.TokenId = uuid.NewString()
+
+	customClaim := TokenCustomClaims{
+		UserId:  id,
+		TokenId: td.TokenId,
 		StandardClaims: jwt.StandardClaims{
-			IssuedAt:  unixTime,
-			ExpiresAt: tokenExp,
+			IssuedAt:  currentUTime,
+			ExpiresAt: td.ExpiredAt,
+			Issuer:    "Block-explorer",
 		},
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-	ss, err := token.SignedString(key)
-
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodRS256, customClaim)
+	signedAccessToken, err := accessToken.SignedString(key)
 	if err != nil {
-		log.Println("Failed to sign id token string")
-		return "", err
+		log.Printf("Failed to sign access token: %v\n", err)
+		return nil, apperrors.NewInternal()
 	}
 
-	return ss, nil
+	td.Token = signedAccessToken
+
+	return td, nil
 }
 
-// refreshTokenData holds the actual signed jwt string along with the ID
-// We return the id so it can be used without re-parsing the JWT from signed string
-type refreshTokenData struct {
-	SS        string
-	ID        uuid.UUID
-	ExpiresIn time.Duration
-}
+// makeRefreshT function crate refresh token
+func makeRefreshT(tokenId string, key []byte, tokenDuration int64) (*tokenData, error) {
+	td := &tokenData{}
 
-// refreshTokenCustomClaims holds the payload of a refresh token
-// This can be used to extract user id for subsequent
-// application operations (IE, fetch user in Redis)
-type refreshTokenCustomClaims struct {
-	UID uuid.UUID `json:"uid"`
-	jwt.StandardClaims
-}
+	currentUTime := time.Now().Unix()
+	td.ExpiredAt = currentUTime + tokenDuration
+	td.TokenId = tokenId
 
-// generateRefreshToken creates a refresh token
-// The refresh token stores only the user's ID, a string
-func generateRefreshToken(uid uuid.UUID, key string, exp int64) (*refreshTokenData, error) {
-	currentTime := time.Now()
-	tokenExp := currentTime.Add(time.Duration(exp) * time.Second)
-	tokenID, err := uuid.NewRandom() // v4 uuid in the google uuid lib
-	if err != nil {
-		log.Println("Failed to generate refresh token ID")
-		return nil, err
+	tokenAndUserId := strings.Split(tokenId, ":")
+	if len(tokenAndUserId) != 2 {
+		log.Printf("Error split token and user id: %s\n", tokenId)
+		return nil, apperrors.NewInternal()
 	}
 
-	claims := refreshTokenCustomClaims{
-		UID: uid,
+	customClaim := TokenCustomClaims{
+		UserId:  tokenAndUserId[1],
+		TokenId: td.TokenId,
 		StandardClaims: jwt.StandardClaims{
-			IssuedAt:  currentTime.Unix(),
-			ExpiresAt: tokenExp.Unix(),
-			Id:        tokenID.String(),
+			IssuedAt:  currentUTime,
+			ExpiresAt: td.ExpiredAt,
+			Issuer:    "Block-explorer",
 		},
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	ss, err := token.SignedString([]byte(key))
-
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, customClaim)
+	signedRefreshToken, err := refreshToken.SignedString(key)
 	if err != nil {
-		log.Println("Failed to sign refresh token string")
-		return nil, err
+		log.Printf("Failed to sign token: %v\n", err)
+		return nil, apperrors.NewInternal()
 	}
 
-	return &refreshTokenData{
-		SS:        ss,
-		ID:        tokenID,
-		ExpiresIn: tokenExp.Sub(currentTime),
-	}, nil
+	td.Token = signedRefreshToken
+
+	return td, nil
 }
 
-// validateIDToken returns the token's claims if the token is valid
-func validateIDToken(tokenString string, key *rsa.PublicKey) (*idTokenCustomClaims, error) {
-	claims := &idTokenCustomClaims{}
+// validAccessT returns the token's claims if the token is valid
+func validAccessT(tokenString string, key *rsa.PublicKey) (*TokenCustomClaims, error) {
+
+	claims := &TokenCustomClaims{}
 
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		return key, nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	if !token.Valid {
+		return nil, fmt.Errorf("Token is invalid")
+	}
 
-	// For now we'll just return the error and handle logging in service level
+	claims, ok := token.Claims.(*TokenCustomClaims)
+	if !ok {
+		return nil, fmt.Errorf("Token valid but couldn't parse claims")
+	}
+
+	return claims, nil
+}
+
+// validAccessT returns the token's claims if the token is valid
+func validRefreshT(tokenString string, key []byte) (*TokenCustomClaims, error) {
+
+	claims := &TokenCustomClaims{}
+
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return key, nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	if !token.Valid {
-		return nil, fmt.Errorf("ID token is invalid")
+		return nil, fmt.Errorf("Token is invalid")
 	}
 
-	claims, ok := token.Claims.(*idTokenCustomClaims)
-
+	claims, ok := token.Claims.(*TokenCustomClaims)
 	if !ok {
-		return nil, fmt.Errorf("ID token valid but couldn't parse claims")
+		return nil, fmt.Errorf("Token valid but couldn't parse claims")
 	}
 
 	return claims, nil

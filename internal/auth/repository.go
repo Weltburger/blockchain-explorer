@@ -19,6 +19,7 @@ type UserRepo interface {
 // TokenRepository defines methods it expects a repository
 // it interacts with to implement
 type TokenRepo interface {
-	SetRefreshToken(ctx context.Context, userID string, tokenID string, expiresIn time.Duration) error
-	DeleteRefreshToken(ctx context.Context, userID string, prevTokenID string) error
+	FetchToken(ctx context.Context, tokenId string) (string, error)
+	SetToken(ctx context.Context, tokenId, token string, expiresIn time.Duration) error
+	DeleteToken(ctx context.Context, tokenId string) error
 }

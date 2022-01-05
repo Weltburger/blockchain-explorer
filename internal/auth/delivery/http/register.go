@@ -11,6 +11,8 @@ func RegisterEndpoints(router *echo.Group, conf Config) {
 	{
 		authEndpoints.POST("/sign-up", h.SignUp)
 		authEndpoints.POST("/sign-in", h.SignIn)
+		authEndpoints.POST("/refresh", h.Refresh)
+		authEndpoints.POST("/sign-out", h.SignOut, Authorization(h.TokenUseCase))
 	}
 
 }

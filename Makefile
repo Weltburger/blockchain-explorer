@@ -25,7 +25,10 @@ migrate-up:
 migrate-down:
 	migrate -path $(MPATH) -database "postgresql://root:password@localhost:5432/blockchain_explorer?sslmode=disable" -verbose down
 
-.PHONY: postgres createdb dropdb migrate-up migrate-down migrate-create create-keypair
+swagdoc:
+	swag init -d cmd,internal/auth,internal/explorer,internal/apperrors,models
+
+.PHONY: postgres createdb dropdb migrate-up migrate-down migrate-create create-keypair swagdoc
 
 
 #docker run -d --name pg_db --hostname pgdb --network blockchainnet -p 5432:5432 -e POSTGRES_USER=root -e POSTGRES_PASSWORD=password -e PGDATA=/var/lib/postgresql/data/pgdata -e POSTGRES_DB=blockchain_explorer -v pgvolume:/var/lib/postgresql/data postgres
