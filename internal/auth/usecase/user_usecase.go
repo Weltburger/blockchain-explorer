@@ -7,8 +7,6 @@ import (
 	"explorer/internal/apperrors"
 	"explorer/internal/auth"
 	"explorer/models"
-
-	"github.com/google/uuid"
 )
 
 type UserCase struct {
@@ -21,19 +19,12 @@ func NewUserCase(userRepo auth.UserRepo) auth.UserUsecase {
 	}
 }
 
-// Get retrieves a user based on their uuid
-func (u *UserCase) Get(ctx context.Context, uid uuid.UUID) (*models.User, error) {
-	user, err := u.userRepo.GetByID(ctx, uid)
-
-	return user, err
-}
-
 // Signup handler use for register new user
 func (u *UserCase) SignUp(ctx context.Context, usr *models.User) error {
 	// hash user password
 	pwd, err := hashPassword(usr.Password)
 	if err != nil {
-		log.Printf("Error to hash password for email: %v\n", usr.Email)
+		log.Printf("Error to hash password for user: %v\n", usr.Email)
 		return apperrors.NewInternal()
 	}
 

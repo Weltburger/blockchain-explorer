@@ -12,46 +12,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestGet(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
-		uid, _ := uuid.NewRandom()
-
-		mockUserResp := &models.User{
-			ID:       uid,
-			Email:    "bob@bob.com",
-			Password: "hashedpassword",
-		}
-
-		mockUserRP := new(mocks.MockUserRepo)
-		us := NewUserCase(mockUserRP)
-		mockUserRP.On("GetByID", mock.Anything, uid).Return(mockUserResp, nil)
-
-		ctx := context.TODO()
-		u, err := us.Get(ctx, uid)
-
-		assert.NoError(t, err)
-		assert.Equal(t, u, mockUserResp)
-		mockUserRP.AssertExpectations(t)
-	})
-
-	t.Run("Error", func(t *testing.T) {
-		uid, _ := uuid.NewRandom()
-
-		mockUserRP := new(mocks.MockUserRepo)
-		us := NewUserCase(mockUserRP)
-
-		notFoundError := apperrors.NewNotFound("id", uid.String())
-		mockUserRP.On("GetByID", mock.Anything, uid).Return(nil, notFoundError)
-
-		ctx := context.TODO()
-		u, err := us.Get(ctx, uid)
-
-		assert.Empty(t, u)
-		assert.Error(t, err)
-		mockUserRP.AssertExpectations(t)
-	})
-}
-
 func TestSignUp(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		userPW := "strongPassword"
@@ -80,7 +40,7 @@ func TestSignUp(t *testing.T) {
 		mockUserRP.AssertExpectations(t)
 	})
 
-	t.Run("Error", func(t *testing.T) {
+	t.Run("User already exist error", func(t *testing.T) {
 		mockUser := &models.User{
 			Email:    "1@mail.local",
 			Password: "secretpassword",
