@@ -4,7 +4,6 @@ import (
 	"context"
 	"explorer/models"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -41,22 +40,4 @@ func (m *MockUserRepo) CreateUser(ctx context.Context, u *models.User) error {
 	}
 
 	return r0
-}
-
-// GetByID is mock of UserRepository GetByID
-func (m *MockUserRepo) GetByID(ctx context.Context, uid uuid.UUID) (*models.User, error) {
-	ret := m.Called(ctx, uid)
-
-	var r0 *models.User
-	if ret.Get(0) != nil {
-		r0 = ret.Get(0).(*models.User)
-	}
-
-	var r1 error
-
-	if ret.Get(1) != nil {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
 }

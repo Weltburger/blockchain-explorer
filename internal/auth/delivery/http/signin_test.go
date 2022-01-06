@@ -46,7 +46,7 @@ func TestSignIn(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 
 		mockUC.AssertNotCalled(t, "SignIn", mock.Anything)
-		mockTC.AssertNotCalled(t, "NewPairTokens", mock.Anything)
+		mockTC.AssertNotCalled(t, "GenerateTokens", mock.Anything)
 	})
 
 	t.Run("Invalid request data JSON format", func(t *testing.T) {
@@ -62,7 +62,7 @@ func TestSignIn(t *testing.T) {
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		mockUC.AssertNotCalled(t, "SignIn", mock.Anything)
-		mockTC.AssertNotCalled(t, "NewPairTokens", mock.Anything)
+		mockTC.AssertNotCalled(t, "GenerateTokens", mock.Anything)
 	})
 
 	t.Run("Error returned from UserUsecase SignIn", func(t *testing.T) {
@@ -99,7 +99,7 @@ func TestSignIn(t *testing.T) {
 		e.ServeHTTP(w, req)
 
 		mockUC.AssertCalled(t, "SignIn", mockUSArgs...)
-		mockTC.AssertNotCalled(t, "NewPairTokens")
+		mockTC.AssertNotCalled(t, "GenerateTokens")
 		assert.Equal(t, http.StatusNotFound, w.Code)
 	})
 
@@ -131,14 +131,13 @@ func TestSignIn(t *testing.T) {
 
 		mockTSArgs := mock.Arguments{
 			mock.AnythingOfType("*context.emptyCtx"),
-			u,
-			"",
+			u.ID.String(),
 		}
 		mockTokenPair := &models.TokenPair{
-			IDToken:      models.IDToken{SS: "idToken"},
-			RefreshToken: models.RefreshToken{SS: "refreshToken"},
+			AccessToken:  "idToken",
+			RefreshToken: "refreshToken",
 		}
-		mockTC.On("NewPairTokens", mockTSArgs...).Return(mockTokenPair, nil)
+		mockTC.On("GenerateTokens", mockTSArgs...).Return(mockTokenPair, nil)
 
 		// a response recorder for getting written http response
 		w := httptest.NewRecorder()
@@ -160,7 +159,7 @@ func TestSignIn(t *testing.T) {
 		// assert.Equal(t, respBody, w.Body.Bytes())
 
 		mockUC.AssertCalled(t, "SignIn", mockUSArgs...)
-		mockTC.AssertCalled(t, "NewPairTokens", mockTSArgs...)
+		mockTC.AssertCalled(t, "GenerateTokens", mockTSArgs...)
 	})
 
 	t.Run("Error Token Creation", func(t *testing.T) {
@@ -191,12 +190,11 @@ func TestSignIn(t *testing.T) {
 
 		mockTSArgs := mock.Arguments{
 			mock.AnythingOfType("*context.emptyCtx"),
-			u,
-			"",
+			u.ID.String(),
 		}
 
 		mockError := apperrors.NewInternal()
-		mockTC.On("NewPairTokens", mockTSArgs...).Return(nil, mockError)
+		mockTC.On("GenerateTokens", mockTSArgs...).Return(nil, mockError)
 
 		// a response recorder for getting written http response
 		w := httptest.NewRecorder()
@@ -218,7 +216,7 @@ func TestSignIn(t *testing.T) {
 		// assert.Equal(t, respBody, w.Body.Bytes())
 
 		mockUC.AssertCalled(t, "SignIn", mockUSArgs...)
-		mockTC.AssertCalled(t, "NewPairTokens", mockTSArgs...)
+		mockTC.AssertCalled(t, "GenerateTokens", mockTSArgs...)
 	})
 
 }

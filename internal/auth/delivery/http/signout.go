@@ -25,7 +25,7 @@ func (h *Handler) SignOut(c echo.Context) error {
 	err := h.TokenUseCase.DeleteTokens(ctx, requestHeader)
 	if err != nil {
 		appErr := err.(*apperrors.Error)
-		c.JSON(appErr.Status(), appErr)
+		return c.JSON(appErr.Status(), appErr)
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{

@@ -4,8 +4,6 @@ import (
 	"context"
 	"explorer/models"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // UserRepo defines methods the service layer expects
@@ -13,7 +11,6 @@ import (
 type UserRepo interface {
 	CreateUser(ctx context.Context, user *models.User) error
 	GetByEmail(ctx context.Context, email string) (*models.User, error)
-	GetByID(ctx context.Context, uid uuid.UUID) (*models.User, error)
 }
 
 // TokenRepository defines methods it expects a repository

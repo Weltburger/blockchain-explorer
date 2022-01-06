@@ -3,9 +3,9 @@ package http
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"explorer/internal/apperrors"
@@ -219,10 +219,13 @@ func TestSignUp(t *testing.T) {
 
 		e.ServeHTTP(w, req)
 
-		responseBody := fmt.Sprintf("Account %s successfully created! Approve your email and Signin!", u.Email)
+		responseBody, err := json.Marshal(map[string]string{
+			"message": "Account created successfully!",
+		})
+		assert.NoError(t, err)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		assert.Equal(t, responseBody, w.Body.String())
+		assert.Equal(t, string(responseBody), strings.TrimSpace(w.Body.String()))
 		mockUC.AssertExpectations(t)
 	})
 
